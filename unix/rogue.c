@@ -1,5 +1,5 @@
 /* rogue.c - ECL Rogue */
-/* rogue.c, 17-Nov-09 12:54:47, Edit by relph */
+/* rogue.c, 15-Sep-13 22:52:42, Edit by relph */
 /* <RELPH.ROGUE>ROGUE.PAS.2290,  9-Jan-88 12:51:02, Edit by RELPH */
 /* **************************************************************************
 
@@ -295,16 +295,22 @@ sometime -- JMR
 17-Nov-09 12:54:47, Edit by relph
 #74  Add "Fast mode" indicator in status line
 
+16-Jul-13 09:54:35, Edit by relph
+#75  Move init files to ~/.rogue/
+
+15-Sep-13 22:52:21, Edit by relph
+#76  Fix display of version info
+
 ****************************************************************************/
 
 #include <curses.h>
 #include <ctype.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/timeb.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <time.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -322,9 +328,9 @@ sometime -- JMR
 #define Rogue_Version	4
 
 /* HEY!  CHANGE THESE THREE VERSION CONSTANTS FOR EVERY CHANGE!!! */
-#define Rogue_Update	74
-#define Rogue_Edit	2297
-#define Rogue_Date	"17 November 2009"
+#define Rogue_Update	76
+#define Rogue_Edit	2298
+#define Rogue_Date	"15 September 2013"
 
 /* --------------------------------------------------------- */
 /* static initializers */
@@ -1872,6 +1878,8 @@ int Orig_Y[Max_Room] = {
 
 View_Array Old_World = { '&', '&', '&' }; /* This is an empty */
 
+char *ConfigDir = ".rogue";	/* #75 */
+
 #if 0
 bool Virgin = true;
 bool Setup = true;
@@ -2617,6 +2625,78 @@ int Monster_Number(char ch) {
     return (ch - Mon_lo_offset);
 }
 
+/* #75 open ~/.rogue/fn */
+FILE *Config_Open(const char *fn, const char *mode) {
+  struct passwd *pwp;
+  char *confdir;
+  char *conffn;
+  int len;
+  struct stat sbuf;
+  FILE *f;
+  char *dotfn;
+
+  /* first, look for .rogue.fn in current directory */
+  len = strlen(".rogue.") + strlen(fn) + 1;
+  dotfn = (char *)malloc(sizeof(char) * len);
+  if (dotfn) {
+    strcpy(dotfn, ".rogue.");
+    strcat(dotfn, fn);
+    if (stat(dotfn, &sbuf) == 0) /* .rogue.fn exists? */
+      f = fopen(dotfn, mode);	 /* use it */
+    else
+      f = NULL;
+    free(dotfn);
+
+    if (f != NULL)
+      return f;			/* found it */
+  }
+
+  /* otherwise, look in ~/.rogue/fn */
+  pwp = getpwuid(getuid());
+  len = strlen(pwp->pw_dir) + strlen(ConfigDir) + 1 + 1; /* / + \0 */
+  confdir = (char *)malloc(sizeof(char) * len);
+  if (!confdir)
+    return NULL;
+  strcpy(confdir, pwp->pw_dir);
+  strcat(confdir, "/");
+  strcat(confdir, ConfigDir);
+
+  if (logfp == NULL)
+    logfp = stderr;
+  
+  if (stat(confdir, &sbuf) == -1) {
+    if (errno == ENOENT) {	/* does not exist */
+      if (mkdir(confdir, 0700) != 0) {
+	fprintf(logfp, "%s: mkdir failed: %d\n", confdir, errno);	
+	return NULL;
+      }
+    } else {
+      fprintf(logfp, "%s: stat failed: %d\n", confdir, errno);	
+      return NULL;
+    }
+  } else {			 /* success */
+    if (!S_ISDIR(sbuf.st_mode)) /* exists */
+      return NULL;
+  }
+
+  len = strlen(confdir) + strlen(fn) + 1 + 1; /* / + \0 */
+  conffn = (char *)malloc(sizeof(char) * len);
+  if (!conffn)
+    return NULL;
+  strcpy(conffn, confdir);
+  strcat(conffn, "/");
+  strcat(conffn, fn);
+
+  f = fopen(conffn, mode);
+  if (f == NULL) {
+    fprintf(logfp, "%s: open failed: %d\n", conffn, errno);
+  }
+  free(conffn);
+  free(confdir);
+
+  return f;
+}
+
 void Write_Killer(char *fp, char Killer) {
 
   int Mon_num;
@@ -2667,7 +2747,7 @@ int Personal_scores(bool rstat) { /* #71 */
   }
   I = 0;
   Found = true;
-  F = fopen(".rogue.scores", "r");
+  F = Config_Open("scores", "r"); /* #75 */
   if (F) {
     while (fgets(line, LONG_LEN, F) != NULL && I < 10) {
       tok = strtok(line, " \n");
@@ -2722,7 +2802,7 @@ int Personal_scores(bool rstat) { /* #71 */
     sprintf(Personal[I].Rest, "%s-%s-%02d %d '%c' %s", /* #71 new format... */
 	    tok, Mon, J, World.Level, Killer, Player.Name);
 
-    F = fopen(".rogue.scores", "w");
+    F = Config_Open("scores", "w"); /* #75 */
     if (F) {
       for (I = 0; I < 10; ++I)
 	if (Personal[I].Score > 0)
@@ -4396,7 +4476,7 @@ void First_Init() {
   noecho();
   typeahead(-1);
 
-  logfp = fopen(".rogue.log", "w"); /* #71 */
+  logfp = Config_Open("log", "w"); /* #71,#75 */
   if (logfp)
     setbuf(logfp, NULL);	/* unbuffered */
 } /* First_Init */
@@ -7348,7 +7428,7 @@ void Rdinit() {
   bool val;
   char *tok;
 
-  initfp = fopen(".rogue.init", "r");
+  initfp = Config_Open("init", "r"); /* #75 */
   if (initfp == NULL)
     return;
 
@@ -7401,7 +7481,7 @@ bool SaveInit() {
   FILE *initfp;
   time_t now;
 
-  initfp = fopen(".rogue.init", "w");
+  initfp = Config_Open("init", "w"); /* #75 */
   if (initfp == NULL)
     return false;
 
@@ -9232,6 +9312,7 @@ void Type_version() {
 
 void Version_Text() {
   Long_string mod;
+  StartText();			/* #76 */
   Type_version();
   TextLine++;
   AddText(" Old features:  Bugs.");
@@ -9245,7 +9326,7 @@ void Version_Text() {
   TextLine++;
 } /* Version_Text */
 
-void Disp_Version () {
+void Disp_Version() {
   char Ch;
 
   clear();
@@ -9253,8 +9334,8 @@ void Disp_Version () {
   AddText("Report bugs to: ");
   addstr(Bug_add);
   addstr(" via mail.");
-  move(24,1);
-  addstr("[Type anything to continue] ");
+  TextLine++;
+  AddText("[Type anything to continue] ");
   Ch = Comand();
   Restore_screen();
 } /* Disp_Version */

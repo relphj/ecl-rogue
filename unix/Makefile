@@ -18,7 +18,7 @@ DOCDIR = /usr/share/doc/
 TARFILES = \
 	README LICENCE TODO BUGS Makefile rogue.h rogue.c rogue.html rogue.txt
 
-LDFLAGS = -lcurses -ltermcap
+LDFLAGS = -lncurses -ltermcap
 CFLAGS = -g -Wall
 # -I../lib
 

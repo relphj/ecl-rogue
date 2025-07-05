@@ -1,5 +1,5 @@
 /* rogue.c - ECL Rogue */
-/* rogue.c, 20-Apr-04 11:01:16, Edit by relph */
+/* rogue.c, 17-Nov-09 12:54:47, Edit by relph */
 /* <RELPH.ROGUE>ROGUE.PAS.2290,  9-Jan-88 12:51:02, Edit by RELPH */
 /* **************************************************************************
 
@@ -283,6 +283,18 @@ sometime -- JMR
 #71  Convert to C for Linux.  Fix minor bugs.  Reimplement some external
      functions originally written in DEC20 Macro.
 
+8-Jun-05 22:32:34, Edit by relph
+#72  Add confirmation message for Boon of Genocide.  Fix bug in genocide
+     when monster detection potion had been quaffed.  Fix bug in healing
+     while swallowed by purple worm.
+
+29-Jun-05 16:29:10, Edit by relph
+#73  Hey!  How can you know it's an Invisible Stalker that's whanging on
+     yer hide if it's, well, invisible?!  Fix date displayed in version.
+
+17-Nov-09 12:54:47, Edit by relph
+#74  Add "Fast mode" indicator in status line
+
 ****************************************************************************/
 
 #include <curses.h>
@@ -307,10 +319,12 @@ sometime -- JMR
 
 #include "rogue.h"
 
-/* HEY!  CHANGE THE FIRST TWO VERSION CONSTANTS FOR EVERY CHANGE!!! */
-#define Rogue_Update	71
-#define Rogue_Edit	2292
 #define Rogue_Version	4
+
+/* HEY!  CHANGE THESE THREE VERSION CONSTANTS FOR EVERY CHANGE!!! */
+#define Rogue_Update	74
+#define Rogue_Edit	2297
+#define Rogue_Date	"17 November 2009"
 
 /* --------------------------------------------------------- */
 /* static initializers */
@@ -2134,6 +2148,8 @@ void Show_Stats() {
 	    Player.Gold, World.Level, Player.Level, Player.XP,
 	    Player.AC, Player.HP, Player.Max_HP);
     addstr(status);
+    if (Fast)			/* #74 */
+      addstr(" Fast");
     if (Player.Last_meal >= Fainting_Meal)
       addstr(" Fainting");
     else if (Player.Last_meal >= Weak_Meal)
@@ -2198,8 +2214,8 @@ void Echo(char *S) {
 
 void Scr_Text(int Y, char *S) {
   move(Y, 0);
-  clrtoeol();
   addstr(S);
+  clrtoeol();
 } /* Scr_Text */
 
 /* This turns on/off the lights In a lit room. */
@@ -2469,6 +2485,7 @@ void Player_Disappears() {
   int Room,
   T, U,
   I, J;
+  char Ch;
 
   Room = World.Room_array[Player.Prev.x][Player.Prev.y];
   Dark = true;
@@ -2481,10 +2498,18 @@ void Player_Disappears() {
     for (I = -1; I <= 1; ++I) {
       U = Player.Prev.x + I;
       World.Seeable[U][T] = ((Player.SeeMon_count > 0) && World.Mon[U][T]);
-      if (Dark)
-	World.Seen[U][T] = ((! (World.S_World[U][T] == ' ' ||
-				World.S_World[U][T] == '.')) ||
-			    World.Obj[U][T]);
+      if (Dark) {
+	Ch = World.S_World[U][T];
+	World.Seen[U][T] = (World.Obj[U][T] ||
+			    (Ch == '+' ||
+			     Ch == '%' ||
+			     Ch == '^' ||
+			     Ch == '#') ||
+			    /* #71 only see walls if they're already visible */
+			    ((Ch == '|' ||
+			      Ch == '-') &&
+			     World.Seen[U][T]));
+      }
     }
   }
 } /* Player_Disappears */
@@ -2584,6 +2609,14 @@ bool Name_check(char *name) {
 
 } /* Name_check */
 
+/* #72 convert monster letter to number */
+int Monster_Number(char ch) {
+  if (islower(ch))
+    return (ch - Mon_hi_offset);
+  else
+    return (ch - Mon_lo_offset);
+}
+
 void Write_Killer(char *fp, char Killer) {
 
   int Mon_num;
@@ -2601,10 +2634,7 @@ void Write_Killer(char *fp, char Killer) {
   else if (Killer == 'j')
     strcpy(fp, " Killed by Juiblex");
   else if (isalpha(Killer)) {
-    if (islower(Killer))
-      Mon_num = Killer - Mon_hi_offset;
-    else
-      Mon_num = Killer - Mon_lo_offset;
+    Mon_num = Monster_Number(Killer); /* #72 */
     mp = &Monster[Mon_num];
     ch = mp->Long_Name[0];
     if (ch == 'a' ||
@@ -3438,15 +3468,73 @@ void Con_Table() {
     fprintf(logfp, "\n");
 } /* Con_Table */
 
+void Place_Next_To(Loc_Type Source, Loc_Type *Dest, bool Is_Obj) {
+  int I, J;
+  int X_Disp[3], Y_Disp[3];
+  Loc_Type Tmp;
+  bool Found;
+
+  *Dest = Source;
+  do {
+    if ((Dest->x < X_Orig) || (Dest->x > S_Max_X))
+      Dest->x = Die(S_Max_X);
+    if ((Dest->y < Y_Orig) || (Dest->y > S_Max_Y))
+      Dest->y = Die(S_Max_Y);
+    Tmp = *Dest;
+    X_Disp[0] = Die(3) - 2;
+    do {
+      X_Disp[1] = Die(3) - 2;
+    } while (X_Disp[0] == X_Disp[1]);
+    X_Disp[2] = -(X_Disp[0] + X_Disp[1]);
+    Y_Disp[0] = Die(3) - 2;
+    do {
+      Y_Disp[1] = Die(3) - 2;
+    } while (Y_Disp[0] == Y_Disp[1]);
+    Y_Disp[2] = -(Y_Disp[0] + Y_Disp[1]);
+    I = 0;
+    Found = false;
+    do {
+      Dest->x = Tmp.x + X_Disp[I];
+      J = 0;			/* #58 */
+      if ((Dest->x >= X_Orig) && (Dest->x <= S_Max_X))
+	do {
+	  Dest->y = Tmp.y + Y_Disp[J];
+	  if ((Dest->y >= Y_Orig) && (Dest->y <= S_Max_Y))
+	    if ((Dest->x != Source.x) || (Dest->y != Source.y))
+	      if (World.S_World[Dest->x][Dest->y] == '.' ||
+		  World.S_World[Dest->x][Dest->y] == '^' ||
+		  World.S_World[Dest->x][Dest->y] == '#' ||
+		  World.S_World[Dest->x][Dest->y] == '+') {
+		if (Is_Obj) {
+		  if (World.Obj[Dest->x][Dest->y] == EMPTY)
+		    Found = true;
+		} else if (World.Mon[Dest->x][Dest->y] == EMPTY)
+		  Found = true;
+	      }
+	  J++;
+	} while (!((J == 3) || Found));
+      I++;
+    } while (!((I == 3) || Found));
+  } while (!Found);
+} /* Place_Next_To */
+
 void Pick_A_Place(int *X, int *Y) {
   int Room;
   int x,y;
+  int incr;			/* #73 */
+
+  /* #73 pick a random increment, otherwise certain rooms are picked */
+  /* #73 more often */
+  incr = Die(8);
+  if (incr % 3 == 0)
+    incr++;			/* #73 incr can be 1,2,4,5,7,8 */
 
   do {
     /* Find a random room */
     Room = Die(9) - 1;
+
     while (! World.Rooms[Room].Existent)
-      Room = ((Room + 1) % 9);
+      Room = ((Room + incr) % 9);
     /* And then a random place in that room */
     x = Die(World.Rooms[Room].Max_X) + World.Rooms[Room].Abs_X;
     y = Die(World.Rooms[Room].Max_Y) + World.Rooms[Room].Abs_Y;
@@ -3622,6 +3710,7 @@ void Gen_Obj(int Level, Obj_Ptr *Ptr) {
   Obj_Ptr P;
 
   P = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+  memset(P, 0, sizeof(Obj_Typ));
   *Ptr = P;
 
   if (Die(40) == 1) {		/* #63 */
@@ -3672,15 +3761,33 @@ void Place_Obj(Obj_Ptr P) {
 int Get_Index() {
   int Index;
   int Count;
+  bool found = false;
 
-  Count = 0;
-  do {
+  for (Count = 0; Count < 1000; ++Count) {
     Index = Die(Max_Monster) - 1;
-    Count++;
-  } while ((!(((World.Level >= Monster[Index].Min_Level) &&
-	       (World.Level <= Monster[Index].Max_Level)) ||
-	      ((Count >= 500) && (World.Level <= Monster[Index].Max_Level)))) ||
-	   ((Index == m_mimic) && (World.Objs == NULL))); /* #71 */
+    if ((Index == m_mimic) && (World.Objs == NULL)) /* #71 */
+      continue;
+    if (World.Level < Monster[Index].Min_Level)
+      continue;
+    if (Monster[Index].Max_Level == 0) /* #72 no juiblex */
+      continue;
+    if (Count >= 500) {		/* oh shit! */
+      if (logfp)
+	fprintf(logfp, "Oh shit!  Can't find any good monsters; got %s\n",
+		Monster[Index].Long_Name);
+      found = true;
+      break;
+    }
+    if (World.Level <= Monster[Index].Max_Level) {
+      found = true;
+      break;
+    }
+  }
+
+  if (! found) {		/* #72 */
+    fprintf(logfp, "no monsters at all; using killmoulis\n");
+    Index = m_kill;
+  }
 
   return Index;
 } /* Get_Index */
@@ -3690,6 +3797,7 @@ void Gen_monster(int Level, int Avoid, Mon_Ptr *P_Mon, bool All_awake) {
   Mon_Ptr P;
 
   P = (Mon_Ptr)malloc(sizeof(Monster_Typ));
+  memset(P, 0, sizeof(Monster_Typ));
   *P_Mon = P;
 
   P->Next = NULL;
@@ -3757,6 +3865,7 @@ void Gen_traps() {
 
   for (I = 1; I <= World.Level / 5; ++I) {
     T = (Trap_Ptr)malloc(sizeof(Trap_Typ));
+    memset(T, 0, sizeof(Trap_Typ));
     T->Next = World.Traps;
     World.Traps = T;
     Pick_A_Place(&T->Loc.x, &T->Loc.y);
@@ -3783,6 +3892,9 @@ void Stock_World() {
   int I,J,X,Y;
   Mon_Ptr P_Mon;
   Obj_Ptr P_Obj;
+  int Room,numT,numM;
+  Room_Type *rp;
+  Loc_Type Loc;
 
   /* Turn off some lights, re-initalize used_list */
   for (I = 0; I < Max_Room; ++I) {
@@ -3803,6 +3915,7 @@ void Stock_World() {
   /* Check for amulet, Put Juiblex on it */
   if (World.Level == Amulet_level) {
     P_Obj = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+    memset(P_Obj, 0, sizeof(Obj_Typ));
     P_Obj->Obj_Typ = Amulet_T;
     Pick_A_Place(&P_Obj->Loc.x, &P_Obj->Loc.y);
     P_Obj->Cursed = false;
@@ -3811,19 +3924,86 @@ void Stock_World() {
     Place_Obj(P_Obj);
 
     P_Mon = (Mon_Ptr)malloc(sizeof(Monster_Typ));
+    memset(P_Mon, 0, sizeof(Monster_Typ));
     P_Mon->Next = NULL;
     P_Mon->Index = m_juiblex;
     P_Mon->HP = 88;
-    P_Mon->Paralyzed_count = 0;
-    P_Mon->Confused_count = 0;
     P_Mon->Speed = 2;
-    P_Mon->Speed_count = 0;
-    P_Mon->Who_first = 0;
     P_Mon->Loc.y = P_Obj->Loc.y;
     P_Mon->Loc.x = P_Obj->Loc.x;
     P_Mon->Awake = false;
 
     Place_Monster(P_Mon);
+  }
+
+  /* #71 add Room Full O' Treasure (tm) */
+  if (Die(1000) == 1 && World.Level > 10 + Die(5)) {
+
+    numT = 4 + Die(5);		/* more treasures than usual */
+    numM = 5 + Die(3);		/* more monsters than usual! */
+
+    J = numT + numM;		/* total count of things */
+
+    Room = Die(9) - 1;
+    while ((! World.Rooms[Room].Existent) ||
+	   World.Room_array[Player.Loc.x][Player.Loc.y] == Room)
+      Room = ((Room + 1) % 9);
+    rp = &World.Rooms[Room];
+
+    /* see if room is big enough */
+    if (rp->Max_X * rp->Max_Y > J + 2) { /* make sure! */
+
+      /* lock the doors! */
+      for (I = 0; I < Max_Doors; ++I) {
+	if ((rp->Doors[I].Abs_loc.x != 0) && (rp->Doors[I].Abs_loc.y != 0)) {
+	  if (rp->Doors[I].Secret <= 0)
+	    rp->Doors[I].Secret = (15 * Die(6));
+	  if ((I == Door_Up) || (I == Door_Down))
+	    World.S_World[rp->Doors[I].Abs_loc.x][rp->Doors[I].Abs_loc.y] = '-';
+	  else
+	    World.S_World[rp->Doors[I].Abs_loc.x][rp->Doors[I].Abs_loc.y] = '|';
+	}
+      }
+
+      /* pick a random place in the room */
+      Loc.x = rp->Abs_X + Die(rp->Max_X);
+      Loc.y = rp->Abs_Y + Die(rp->Max_Y);
+
+      /* Some Treasures... */
+      J = 1;			/* number of treasures */
+      I = 0;			/* number of gold */
+      Y = 0;			/* number of food */
+      while (J <= numT) {
+	Gen_Obj(World.Level, &P_Obj);
+	if ((P_Obj->Obj_Typ == Gold_T && ++I > 2) ||
+	    (P_Obj->Obj_Typ == Food_T && ++Y > 1))
+	  free(P_Obj);
+	else {
+	  Place_Next_To(Loc, &P_Obj->Loc, true);
+	  Place_Obj(P_Obj);
+	  Loc = P_Obj->Loc;	/* move destination */
+	  ++J;
+	}
+      }
+
+      /* At this point, World.Obj_List != NIL and the first item is Not the  */
+      /* Amulet, so If we place a mimic, it won't be on the amulet. */
+
+      /* Some Monsters!!! */
+      J = 1;
+      I = 0;			/* number of killmoulises */
+      while (J <= numM) {
+	Gen_monster(World.Level, -1, &P_Mon, false);
+	Place_Next_To(Loc, &P_Mon->Loc, false);
+	Place_Monster(P_Mon);
+	Loc = P_Mon->Loc;	/* move destination */
+	if ((P_Mon->Index == m_kill) && /* #72 short-circuit broke this test */
+	    (I <= 5))
+	  I++;
+	else
+	  J++;
+      }
+    }
   }
 
   /* Some Treasures... */
@@ -3838,16 +4018,16 @@ void Stock_World() {
 
   /* Some Monsters!!! */
   World.Max_mons = 2 + Die(3);	/* #63 was die(2) */
-  World.Num_mons = World.Max_mons;
+  World.Num_mons = World.Max_mons; /* #71 Num_mons is never accurate! */
   J = 1;
   I = 0;
   while (J <= World.Num_mons) {
     Gen_monster(World.Level, -1, &P_Mon, false);
     Place_Monster(P_Mon);
-    if ((P_Mon->Index != m_kill) && (I <= 5))
-      J++;
-    else
+    if ((P_Mon->Index == m_kill) && (I <= 5)) /* #72 short-circuit broke it */
       I++;
+    else
+      J++;
   }
 
   /* And now traps too! */
@@ -3915,6 +4095,7 @@ void Gen_Character() {
   /* With Player */
 
   Worker = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+  memset(Worker, 0, sizeof(Obj_Typ));
 
   Worker->Obj_Typ = Food_T;
   Worker->Index = 0;
@@ -3922,6 +4103,7 @@ void Gen_Character() {
   Player.Obj_List = Worker;
 
   Worker->Next = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+  memset(Worker->Next, 0, sizeof(Obj_Typ));
   Worker = Worker->Next;
 
   Player.Cur_Arm = Worker;
@@ -3934,6 +4116,7 @@ void Gen_Character() {
   Figure_Ac();
 
   Worker->Next = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+  memset(Worker->Next, 0, sizeof(Obj_Typ));
   Worker = Worker->Next;
 
   Player.Cur_Wep = Worker;
@@ -3946,6 +4129,7 @@ void Gen_Character() {
   Worker->Quan = 1;
 
   Worker->Next = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+  memset(Worker->Next, 0, sizeof(Obj_Typ));
   Worker = Worker->Next;
   Worker->Obj_Typ = Weapon_T;
   Worker->Index = wp_bow;	/* +1 Short bow */
@@ -3956,6 +4140,7 @@ void Gen_Character() {
   Worker->Quan = 1;
 
   Worker->Next = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+  memset(Worker->Next, 0, sizeof(Obj_Typ));
   Worker = Worker->Next;
   Worker->Obj_Typ = Weapon_T;
   Worker->Index = wp_arrows;	/* Arrows */
@@ -4352,7 +4537,8 @@ void Decoding(Obj_Ptr P_Obj, bool *Is_Id, bool *Know_Da_Magick) {
   Has = 0;
   Good = false;
   for (Hand = Left_H; Hand <= Right_H; ++Hand)
-    if (Player.Cur_Ring[Hand] && Player.Cur_Ring[Hand]->Index == r_decode) {
+    if (Player.Cur_Ring[Hand] &&
+	Player.Cur_Ring[Hand]->Index == r_decode) {
       Magick = Player.Cur_Ring[Hand]->Plus_Hit;
       rGood = true;
       if (Magick < 0) {		/* #71 simplify decode implementation */
@@ -4534,7 +4720,7 @@ void Write_obj_name(char *Fp, Obj_Ptr What, bool Another) {
     if (Player.Blind_count) {
       if (What->Quan > 1) {
 	sprintf(str, "%d", What->Quan);
-	strcat(Fp,str);
+	strcat(Fp, str);
       } else
 	strcat(Fp, "a");
     } else if (Is_Id)
@@ -4878,6 +5064,7 @@ Obj_Ptr Take_from_pack(char *Ch, Obj_Ptr *List,
 	  if ((Worker->Quan > 1) && Only_one) {
 	    Worker->Quan--;
 	    Removed_obj = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+	    memset(Removed_obj, 0, sizeof(Obj_Typ));
 	    Removed_obj->Obj_Typ = Worker->Obj_Typ;
 	    Removed_obj->Loc = Worker->Loc;
 	    Removed_obj->Quan = 1;
@@ -4909,6 +5096,7 @@ void Put_on_floor(Obj_Ptr This_one, int Xloc, int Yloc) {
   Obj_Ptr Temp;
 
   Temp = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+  memset(Temp, 0, sizeof(Obj_Typ));
   Temp->Obj_Typ = This_one->Obj_Typ;
   Temp->Loc = This_one->Loc;
   Temp->Quan = This_one->Quan;
@@ -5055,59 +5243,13 @@ char Get_direction() {
   return(Ch);
 }
 
-void Place_Next_To(Loc_Type Source, Loc_Type *Dest, bool Is_Obj) {
-  int I, J;
-  int X_Disp[3], Y_Disp[3];
-  Loc_Type Tmp;
-  bool Found;
-
-  *Dest = Source;
-  do {
-    if ((Dest->x < X_Orig) || (Dest->x > S_Max_X))
-      Dest->x = Die(S_Max_X);
-    if ((Dest->y < Y_Orig) || (Dest->y > S_Max_Y))
-      Dest->y = Die(S_Max_Y);
-    Tmp = *Dest;
-    X_Disp[0] = Die(3) - 2;
-    do {
-      X_Disp[1] = Die(3) - 2;
-    } while (X_Disp[0] == X_Disp[1]);
-    X_Disp[2] = -(X_Disp[0] + X_Disp[1]);
-    Y_Disp[0] = Die(3) - 2;
-    do {
-      Y_Disp[1] = Die(3) - 2;
-    } while (Y_Disp[0] == Y_Disp[1]);
-    Y_Disp[2] = -(Y_Disp[0] + Y_Disp[1]);
-    I = 0;
-    Found = false;
-    do {
-      Dest->x = Tmp.x + X_Disp[I];
-      J = 0;			/* #58 */
-      if ((Dest->x >= X_Orig) && (Dest->x <= S_Max_X))
-	do {
-	  Dest->y = Tmp.y + Y_Disp[J];
-	  if ((Dest->y >= Y_Orig) && (Dest->y <= S_Max_Y))
-	    if ((Dest->x != Source.x) || (Dest->y != Source.y))
-	      if (World.S_World[Dest->x][Dest->y] == '.' ||
-		  World.S_World[Dest->x][Dest->y] == '^' ||
-		  World.S_World[Dest->x][Dest->y] == '#' ||
-		  World.S_World[Dest->x][Dest->y] == '+') {
-		if (Is_Obj) {
-		  if (World.Obj[Dest->x][Dest->y] == EMPTY)
-		    Found = true;
-		} else if (World.Mon[Dest->x][Dest->y] == EMPTY)
-		  Found = true;
-	      }
-	  J++;
-	} while (!((J == 3) || Found));
-      I++;
-    } while (!((I == 3) || Found));
-  } while (!Found);
-} /* Place_Next_To */
-
 void No_more_blindness() {
-  Player.Blind_count = 0;
-  Echo("The cloak of darkness lifts");
+  if (Player.Eaten_count > 0)	/* #72 oh, the hack! */
+    Player.Blind_count = 1;
+  else {
+    Player.Blind_count = 0;
+    Echo("The cloak of darkness lifts");
+  }
 }
 
 void Take_It_Off(Obj_Ptr Which); /* forward decl */
@@ -5331,10 +5473,10 @@ void Enchant_Weapon() {
   }
 } /* Enchant_Weapon */
 
-void Identify(bool Known) {
+void Identify() {
   Obj_Ptr This_one;
 
-  if (! Known)
+  if (! Scroll[s_identify].Id)
     Echo("This scroll is an identify scroll");
   Scroll[s_identify].Id = true;
   This_one = Choose_Item(Identify_A, All_T, false, false); /* #54 */
@@ -5390,17 +5532,27 @@ bool Player_Disgorged() {	/* return true if eaten */
 }
 
 /* Remove_Monsters was internal to Genocide */
-void Remove_Monsters(Mon_Ptr *L, int Idx) {
+int Remove_Monsters(Mon_Ptr *L, int Idx) {
   Mon_Ptr T;
+  int count = 0;		/* #72 */
+  int res;			/* #72 */
 
   if (*L == NULL)
-    return;
+    return(0);
 
   T = *L;
 
   if (T->Index == Idx) {
     /* Remove this monster from the Screen Arrays */
+    if (World.Seeable[T->Loc.x][T->Loc.y] &&
+	((T->Index != m_invis &&
+	  T->Index != m_phantom) ||
+	 Player.Invis_count > 0 ||
+	 Has_on_ring(r_see_inv))) { /* #72 can see the baddie! */
+      count++;
+    }
     World.Mon[T->Loc.x][T->Loc.y] = EMPTY;
+    World.Seeable[T->Loc.x][T->Loc.y] = false;
     Player.XP += Monster[T->Index].Xpval;
     if (T->Index == m_mimic ||
 	T->Index == m_fungi)
@@ -5416,14 +5568,93 @@ void Remove_Monsters(Mon_Ptr *L, int Idx) {
     /* Delink this monster */
     *L = T->Next;
     free(T);
-    Remove_Monsters(L, Idx);	/* Get the rest of the icky-bobs */
-  } else
-    Remove_Monsters(&(*L)->Next, Idx); /* Remove the others from the list */
+    res = Remove_Monsters(L, Idx); /* Get the rest of the icky-bobs */
+  } else {
+    /* Remove the others from the list */
+    res = Remove_Monsters(&(*L)->Next, Idx);
+  }
+  return count + res;
 } /* Remove_Monsters */
+
+void Genocide_Message(int dead, int Idx) {
+  Long_string It;
+  char Is[4];
+  char Ess[2];
+
+  if (dead <= 0 || Player.Blind_count) {
+    Clear_Echo();
+    return;
+  }
+
+  if (dead == 1) {
+    strcpy(Is, "is");
+    strcpy(Ess, "s");
+    if (Switches.Terse_swi)
+      strcpy(It, "it");
+    else {
+      strcpy(It, "the ");
+      strcat(It, Monster[Idx].Long_Name);
+    }
+  } else {
+    strcpy(Is, "are");
+    Ess[0] = '\0';
+    if (Switches.Terse_swi)
+      strcpy(It, "they");
+    else {
+      strcpy(It, "the ");
+      if (Idx == m_werewolf)
+	strcat(It, "werewolves");
+      else if (Idx == m_umpleby)
+	strcat(It, "umplebies");
+      else if (Idx == m_sand)
+	strcat(It, "sandmen");
+      else if (Idx == m_larva)
+	strcat(It, "larvae");
+      else if (Idx == m_kill)
+	strcat(It, "killmouli");
+      else if (Idx == m_homon)
+	strcat(It, "homonculi");
+      else if (Idx == m_almiraj)
+	strcat(It, "al-mi\'raji");
+      else if (Idx == m_fungi ||
+	       Idx == m_vodyanoi)
+	strcat(It, Monster[Idx].Long_Name);
+      else {
+	strcat(It, Monster[Idx].Long_Name);
+	strcat(It, "s");
+      }
+    }
+  }
+
+  Echo_Init();
+  switch (Die(9)) {
+  case 1:
+    sprintf(F, "%s scream%s in agony and %s no more...", It, Ess, Is); break;
+  case 2:
+    sprintf(F, "%s %s launched into eternity...", It, Is); break;
+  case 3:
+    sprintf(F, "%s disappear%s in a cloud of greasy black smoke...", It, Ess); break;
+  case 4:
+    sprintf(F, "%s %s dead...", It, Is); break;
+  case 5:
+    sprintf(F,"%s disappear%s into the ether...", It, Ess); break;
+  case 6:
+    sprintf(F,"%s disappear%s with a quiet pop...", It, Ess); break;
+  case 7:
+    sprintf(F,"%s fade%s away into nothingness...", It, Ess); break;
+  case 8:
+    sprintf(F,"with a sigh %s turn%s and shuffle%s away...", It, Ess, Ess); break;
+  case 9:
+    sprintf(F,"%s fall%s to the floor, lifeless...", It, Ess); break;
+  }
+  Echo_Str[0] = toupper(Echo_Str[0]);
+  Echo(Echo_Str);
+}
 
 void Genocide() {
   int Y_or_n,Ch;
   int Mon_Num;			/* #55 */
+  int dead;			/* #72 */
 
   Echo("You have been granted the boon of genocide");
   do {
@@ -5433,13 +5664,10 @@ void Genocide() {
     Ch = Comand();
     Empty_Echo = true;
     if (! Okmons[Ch])
-      Echo("Please specify a letter in the alphabet");
+      Echo("Please specify a monster (a letter of the alphabet)"); /* #72 */
     else
       do {
-	if (Ch >= 'a')
-	  Mon_Num = Ch - Mon_hi_offset; /* #55 */
-	else
-	  Mon_Num = Ch - Mon_lo_offset;
+	Mon_Num = Monster_Number(Ch); /* #72 */
 	Echo_Init();
 	strcat(F, "You have specified: ");
 	strcat(F, Monster[Mon_Num].Long_Name);
@@ -5449,13 +5677,16 @@ void Genocide() {
 	Y_or_n = tolower(Comand());
       } while (Y_or_n != 'y' && Y_or_n != 'n');
   } while (!(Okmons[Ch] && Y_or_n == 'y'));
+  Empty_Echo = true;
   if (Mon_Num == m_juiblex) {	/* #71 it doesn't work! */
     Echo("Your ears ring with the sound of booming laughter");
     return;
   }
   Monster[Mon_Num].Min_Level = INT_MAX; /* goodbyeee */
   Okmons[Ch] = false; /* #55 remove this monster from genocidable ones */
-  Remove_Monsters(&World.Monsters, Mon_Num);
+  dead = Remove_Monsters(&World.Monsters, Mon_Num);
+  Player_Appears();		/* #72 */
+  Genocide_Message(dead, Mon_Num); /* #72 say something! */
   Check_Player_Level();
 } /* Genocide */
 
@@ -5714,7 +5945,7 @@ void Curing() {
     Player.HP++;
     Echo("You feel more virile now");
   }
-  if (Player.Blind_count > 0)
+  if (Player.Blind_count)
     No_more_blindness();
   Change_stats |= S_Bottom;
 } /* Curing */
@@ -5870,7 +6101,7 @@ bool Read_scroll() {
   Obj_Ptr This_one;
   Scrolls *sp;
 
-  if (Player.Blind_count > 0) {
+  if (Player.Blind_count) {
     if (Switches.Terse_swi)
       Echo("You are blind");
     else
@@ -5880,7 +6111,7 @@ bool Read_scroll() {
     if (Switches.Terse_swi)
       Echo("It\'s dark in here");
     else
-      Echo("It\'s too dark in the Purple Worm\'s stomach to see ANYTHING");
+      Echo("It\'s too dark in the purple worm\'s stomach to see ANYTHING");
     return(false);
   }
 
@@ -5901,7 +6132,7 @@ bool Read_scroll() {
     case s_weapon: Enchant_Weapon(); break;
     case s_curse: Remove_curse(); break;
     case s_mapping: Magic_mapping(); break;
-    case s_identify: Identify(Scroll[This_one->Index].Id); break;
+    case s_identify: Identify(); break;
     case s_genocide: Genocide(); break;
     case s_scare: Scare_monster(); break;
     case s_nothing: Nothing_Scroll(); break;
@@ -6073,7 +6304,7 @@ bool Put_on_ring() {		/* #54 a few changes */
       if (Hand == 'L' || Hand == 'R' || Hand == CHESC)
 	break;
       Empty_Echo = true;
-      Echo("Please type \"L\", \"R\" or <Esc>");
+      Echo("Please type \"l\", \"r\" or <ESC>");
     }
   if (Hand == CHESC) {		/* #67 */
     Clear_Echo();
@@ -6142,53 +6373,48 @@ void Take_It_Off(Obj_Ptr Which) {
 }
 
 bool Remove_Ring() {
-  bool Bogus,More;
   char Ch;
   Hand_Type Hand;
   Obj_Ptr The_Ring;
 
-  More = true;
-  Bogus = true;
-  Empty_Echo = true;
-  do {
-    /* With Player */
-    if (Player.Cur_Ring[Right_H] == NULL && Player.Cur_Ring[Left_H] == NULL) {
-      Empty_Echo = true;
-      Echo("You\'re not wearing a ring");
-      return false;
-    } else if (Player.Cur_Ring[Left_H] == NULL)
-      Ch = 'r';
-    else if (Player.Cur_Ring[Right_H] == NULL)
-      Ch = 'l';
-    else {
-      Echo("Which ring?");
-      Move_To_Echo();
+  /* With Player */
+  if (Player.Cur_Ring[Right_H] == NULL && Player.Cur_Ring[Left_H] == NULL) {
+    Empty_Echo = true;
+    Echo("You\'re not wearing a ring");
+    return false;
+  } else if (Player.Cur_Ring[Left_H] == NULL)
+    Ch = 'r';
+  else if (Player.Cur_Ring[Right_H] == NULL)
+    Ch = 'l';
+  else
+    while (1) {			/* #71 completely redone */
+      Scr_Text(0, "Which ring? ");
+      move(0, 12);
+      refresh();
       Ch = tolower(Comand());
+      Empty_Echo = true;
+      if (Ch == 'l' || Ch == 'r' || Ch == CHESC)
+	break;
       if (Ch == '*') {
 	Echo_Init();
 	strcat(F, "l) ");
 	Write_obj_name(F, Player.Cur_Ring[Left_H], Not_Another);
-	Scr_Text(Y_Orig, Echo_Str);
+	Scr_Text(1, Echo_Str);
 	Echo_Init();
 	strcat(F, "r) ");
 	Write_obj_name(F, Player.Cur_Ring[Right_H], Not_Another);
-	Scr_Text(Y_Orig + 1, Echo_Str);
-	Redisplay();
-	Bogus = Wait_For_Space(false);
-	Empty_Echo = true;
-	Clear_Echo();
-	Update_Screen();
-      } else if (Ch != 'l' && Ch != 'r' && Ch != CHESC) {
-	Empty_Echo = true;
-	Echo("Please type \"l\", \"r\", \"*\", or <Esc>");
+	Scr_Text(2, Echo_Str);
+      } else {
+	Scr_Text(0, "Please type \"l\", \"r\", \"*\", or <ESC>");
+	refresh();
+	Wait_For_Space(true);
       }
     }
-  } while (Ch != 'l' && Ch != 'r' && Ch != CHESC && More);
-  if (Ch == CHESC) {
-    Clear_Echo();
-    Redisplay();
+
+  Clear_Echo();
+  Update_Screen();
+  if (Ch == CHESC)
     return false;
-  }
 
   Empty_Echo = true;
   if (Ch == 'l')
@@ -6274,7 +6500,7 @@ void Monster_detection(bool *id) {
     p = p->Next;
   }
   *id = found || *id;
-  if (found)
+  if (found && Player.Blind_count <= 0)	/* #71 no 'sense' if blind */
     Echo("Your spine chills as you sense the presence of monsters");
   else
     Echo("You feel somehow reassured");
@@ -6298,7 +6524,7 @@ void Magic_detection(bool *id) {
     p = p->Next;
   }
   *id = found || *id;
-  if (found)
+  if (found && Player.Blind_count <= 0)	/* #71 no 'sense' if blind */
     Echo("You feel strange and sense the presence of magic");
   else
     Random_Potion(p_magic_det);
@@ -6326,7 +6552,7 @@ void Regain_Intelligence() {
 void Regain_Dexterity() {
   if (Player.DX < Player.Max_DX) {
     Player.DX = Player.Max_DX;
-    Echo("The potion sends a tingling throughout your entire body. Wow!");
+    Echo("The potion sends a tingling throughout your entire body.  Wow!");
     Potion[p_reg_dex].Id = true;
   } else
     Random_Potion(p_reg_dex);
@@ -6386,7 +6612,7 @@ void Healing() {
     Player.Max_HP++;
     Player.HP++;
   }
-  if (Player.Blind_count > 0)
+  if (Player.Blind_count)
     No_more_blindness();
 } /* Healing */
 
@@ -6402,7 +6628,7 @@ void Extra_Healing() {
     Player.Max_HP++;
     Player.HP++;
   }
-  if (Player.Blind_count > 0)
+  if (Player.Blind_count)
     No_more_blindness();
 } /* Extra_Healing */
 
@@ -6411,7 +6637,7 @@ void See_invisible() {
   strcat(F, "This potion tastes like the juice of a ");
   strcat(F, Fruit_name);
   Echo(Echo_Str);
-  Player.Invis_count = 100 + Die(100);
+  Player.Invis_count += 100 + Die(100);
 }
 
 void Haste_self() {
@@ -6453,7 +6679,7 @@ void Confusion() {
   if (Switches.Terse_swi)
     Echo("You feel very confused now");
   else
-    Echo("Wait, what\'s going on here. Huh? What? Who?");
+    Echo("Wait, what\'s going on here?  Huh?  What?  Who?");
   if (Player.IQ < 7)
     Player.Confused_count += 40 + Die(10);
   else if (Player.IQ > 14)
@@ -6463,7 +6689,7 @@ void Confusion() {
 }
 
 void Confuse_monster() {
-  if (Player.Blind_count > 0) 	/* #71 */
+  if (Player.Blind_count) 	/* #71 */
     Random_Potion(p_confuse_mon); /* #71 */
   else
     Echo("Your hands glow red for a moment, then the color fades");
@@ -6490,7 +6716,7 @@ void Nothing_Potion() {
   switch (Blank_message) {
   case 1: Echo("This potion tastes like water"); break;
   case 2:
-    if (Player.Blind_count > 0)	/* #71 */
+    if (Player.Blind_count)	/* #71 */
       Echo("Your ears ring for a moment"); /* #71 */
     else
       Echo("Your vision blurs for a moment");
@@ -6889,6 +7115,7 @@ bool Zap_wand() {
   } else {			/* Zapping */
     Empty_Echo = true;
     Bogus_one = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+    memset(Bogus_one, 0, sizeof(Obj_Typ));
 
     Bogus_one->Obj_Typ = This_one->Obj_Typ;
     Bogus_one->Loc = This_one->Loc;
@@ -6961,7 +7188,7 @@ bool Kill_Player() {
       if (Player.Cur_Ring[Hand])
 	if ((Player.Cur_Ring[Hand]->Index == r_resur) &&
 	    (Player.Cur_Ring[Hand]->Plus_Dam < Player.Cur_Ring[Hand]->Plus_Hit)) {
-	  strcat(F, ".. Which should have killed you?!?");
+	  strcat(F, "... Which should have killed you?!?");
 	  Player.Cur_Ring[Hand]->Plus_Dam++;
 	  Player.HP = Player.Max_HP;
 	  Player.Died_count++;
@@ -7704,6 +7931,7 @@ void Dead_Mon_Treasure(Mon_Ptr M) {
   switch (M->Index) {
   case m_lep:
     Nw = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+    memset(Nw, 0, sizeof(Obj_Typ));
     Nw->Obj_Typ = Gold_T;
     Nw->Loc = Other;
     Nw->Quan = Die(250) + 50;
@@ -7733,6 +7961,7 @@ void Dead_Mon_Treasure(Mon_Ptr M) {
 
   case m_death:
     Nw = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+    memset(Nw, 0, sizeof(Obj_Typ));
     Nw->Obj_Typ = Weapon_T;
     Nw->Loc = Other;
     Nw->Plus_Hit = Die(3) + 2;
@@ -7746,6 +7975,7 @@ void Dead_Mon_Treasure(Mon_Ptr M) {
 
   case m_gith:
     Nw = (Obj_Ptr)malloc(sizeof(Obj_Typ));
+    memset(Nw, 0, sizeof(Obj_Typ));
     Nw->Obj_Typ = Weapon_T;
     Nw->Loc = Other;
     Nw->Plus_Hit = Die(3) + 1;
@@ -7928,20 +8158,31 @@ void M_Ouch_MSG(char *F, Mon_Ptr M, int T, Obj_Ptr Weap) {
   Long_string It;		/* Gag me. */
   int New_Hp, Ratio, M_Half,M_Qtr, M_Max;
   bool Thrown;
+  bool Blind = false;		/* #73 */
+
+  if (Player.Blind_count != 0)		/* #73 can't see invisible? */
+    Blind = true;
+  else if ((M->Index == m_invis ||
+	    M->Index == m_phantom) &&
+	   Player.Invis_count == 0 &&
+	   !Has_on_ring(r_see_inv))
+    Blind = true;
+
   Ratio = (T * 10) / Player_Max_Hit(Weap, M);
   New_Hp = M->HP - T;
   if (Weap != Player.Cur_Wep)
     Thrown = true;
   else
     Thrown = false;
-  if (Switches.Terse_swi)
+  if (Switches.Terse_swi ||
+      Blind)			/* #73 */
     strcpy(It, "it");
   else {
     strcpy(It, "the ");
     strcat(It, Monster[M->Index].Long_Name);
   }
   if (New_Hp <= 0) {		/* It dies */
-    if (Player.Blind_count > 0) { /* #54 */
+    if (Blind) {		/* #73 #54 */
       switch (Die(14)) {	/* #54 */
       case 1:
       case 2:
@@ -7988,7 +8229,7 @@ void M_Ouch_MSG(char *F, Mon_Ptr M, int T, Obj_Ptr Weap) {
       }
     /* It dies */
   } else { /* You hurt it */
-    if (Player.Blind_count > 0)
+    if (Player.Blind_count)
       strcat(F, "You hit it");
     else if (Weap->Obj_Typ == Wand_T)
       switch (Ratio) {
@@ -8035,7 +8276,7 @@ void M_Ouch_MSG(char *F, Mon_Ptr M, int T, Obj_Ptr Weap) {
 	  switch (Die(2)) {
 	  case 1: strcat(F, "; it wails in anguish!"); break;
 	  case 2:
-	    if (Player.Blind_count > 0)
+	    if (Player.Blind_count)
 	      strcat(F, "; it grunts");
 	    else
 	      strcat(F, "; it looks pained");
@@ -8063,7 +8304,7 @@ void M_Ouch_MSG(char *F, Mon_Ptr M, int T, Obj_Ptr Weap) {
 	  switch (Die(3)) {
 	  case 1 : strcat(F, "; it\'s hurting bad"); break;
 	  case 2:
-	    if (Player.Blind_count > 0)
+	    if (Player.Blind_count)
 	      strcat(F, "; it\'s getting desperate");
 	    else
 	      strcat(F, "; it looks desperate");
@@ -8098,6 +8339,7 @@ bool Attack(int X, int Y, Obj_Ptr Enforcer) {
   Hand_Type Hand;
   char Ch;
   bool retval = false;
+  bool Blind = false;		/* #73 */
 
   T = 0;
   M = Find_Mon(World.Monsters, X, Y);
@@ -8191,8 +8433,16 @@ bool Attack(int X, int Y, Obj_Ptr Enforcer) {
       }
     } /* If We woke up a sleeping mimic */
 
+  if (Player.Blind_count != 0)		/* #73 can't see invisible? */
+    Blind = true;
+  else if ((M->Index == m_invis ||
+	    M->Index == m_phantom) &&
+	   Player.Invis_count == 0 &&
+	   !Has_on_ring(r_see_inv))
+    Blind = true;
+
   if (T == 0) {		       /* We did Not hit With thrown weapon */
-    if (Player.Blind_count > 0 && Player.Eaten_count == 0) /* #71 */
+    if (Player.Blind_count && Player.Eaten_count == 0) /* #71 */
       Hit_adj = -2;
     else
       Hit_adj = 0;
@@ -8268,7 +8518,7 @@ bool Attack(int X, int Y, Obj_Ptr Enforcer) {
 	M->Confused_count += 10 + Die(5);
 	Player.Will_confuse = false;
 	Echo_Init();
-	if (Switches.Terse_swi || Player.Blind_count > 0)
+	if (Switches.Terse_swi || Blind) /* #73 */
 	  strcat(F, "It\'s confused");
 	else
 	  sprintf(F, "The %s appears confused", Monster[M->Index].Long_Name);
@@ -8294,7 +8544,7 @@ bool Attack(int X, int Y, Obj_Ptr Enforcer) {
 	  case 2: strcat(F, "You swing and miss "); break;
 	  case 3: strcat(F, "You barely miss "); break;
 	  }
-	if ((Player.Blind_count != 0) || Switches.Terse_swi)
+	if (Blind || Switches.Terse_swi) /* #73 */
 	  strcat(F, "it");
 	else {
 	  strcat(F, "the ");
@@ -8309,7 +8559,7 @@ bool Attack(int X, int Y, Obj_Ptr Enforcer) {
 	  case 2: strcat(F, "You wildly miss "); break;
 	  case 3: strcat(F, "You barely miss "); break;
 	  }
-	if ((Player.Blind_count != 0) || Switches.Terse_swi)
+	if (Blind || Switches.Terse_swi)
 	  strcat(F, "it");
 	else {
 	  strcat(F, "the ");
@@ -8981,10 +9231,13 @@ void Type_version() {
 }
 
 void Version_Text() {
+  Long_string mod;
   Type_version();
   TextLine++;
   AddText(" Old features:  Bugs.");
-  AddText("Last Modified:  23 March 2004.");
+  AddText(" New features:  Bug fixes.");
+  sprintf(mod, "Last Modified:  %s.", Rogue_Date);
+  AddText(mod);
   TextLine++;
   AddText("   Written by:  Gary Craig, Oscar Erickson, John Relph, and Jay Skeer");
   AddText("           at:  USC-ECL May-December, 1982");
@@ -9086,10 +9339,7 @@ void What_symbol() {
   Echo_Init();
   sprintf(F, "\'%c\': ", Ch);
   if (isalpha(Ch)) {
-    if (Ch >= 'a')
-      Ch -= Mon_hi_offset;
-    else
-      Ch -= Mon_lo_offset;
+    Ch = Monster_Number(Ch);	/* #72 */
     strcat(F, Monster[Ch].Long_Name);
   } else
       switch (Ch) {
@@ -9119,6 +9369,7 @@ void What_symbol() {
 void Toggle_Fast() {
   if (F_temp) {
     Fast = !Fast;
+    Change_stats |= S_Bottom;	/* #74 */
     if (Fast)
       Echo("Fast mode is SET");
     else
@@ -9525,7 +9776,10 @@ void Do_Player() {
       Do_Done = false;
       break;
 
-    case 's': Search(Player.Loc.x, Player.Loc.y); break;
+    case 's':
+      Search(Player.Loc.x, Player.Loc.y);
+      F_temp = false;		/* #72 */
+      break;
     case 'V':			/* #71 */
     case 'v':
       Disp_Version();		/* #50 */
@@ -9590,6 +9844,7 @@ void Do_Player() {
       if (Player.Cur_Ring[Hand]->Index == r_teleport) {
 	if (Die(50) == 1) {
 	  Teleportation();
+	  F_temp = false;	/* #71 */
 	  Valid_Command = false; /* #71 stop running if teleported */
 	}
       } else if (Player.Cur_Ring[Hand]->Index == r_search)
@@ -9805,7 +10060,7 @@ void Purple_worm_special(Mon_Ptr M) { /* Man, is this mean! */
 }
 
 void Floating_eye_special() {
-  if (Player.Fixed_count == 0 && ! Player.Blind_count) {
+  if (Player.Fixed_count == 0 && Player.Blind_count == 0) {
     if (! Save_vs_poison(2)) {	/* a break for low-level people */
       if (Switches.Terse_swi)
 	Echo("You are transfixed");
@@ -9909,8 +10164,9 @@ void Umpleby_Special() {
   }
 } /* Umpleby_Special */
 
-void Hurt_Player(Mon_Ptr *M) {	/* #710 */
+void Hurt_Player(Mon_Ptr *M) {	/* #71 */
   int I, T, Adj, M_Max;
+  bool Blind;			/* #73 */
 
   if (Switches.Flush_swi)	/* Flush TYPE ahead IF needed */
     flushinp();
@@ -9931,6 +10187,15 @@ void Hurt_Player(Mon_Ptr *M) {	/* #710 */
   else if ((*M)->Index == m_death)	/* Death Knight two-handed sword? */
     Adj += 4;
 
+  Blind = false;		/* #73 can't see invisible? */
+  if (Player.Blind_count != 0)
+    Blind = true;
+  else if (((*M)->Index == m_invis ||
+	    (*M)->Index == m_phantom) &&
+	   Player.Invis_count == 0 &&
+	   !Has_on_ring(r_see_inv))
+    Blind = true;
+
   /* normal attacks */
   if (Monster[(*M)->Index].Special != 2) { /* Monster has a Normal */
     if (Die(20) >= (Monster[(*M)->Index].Th0 - (Player.AC + Adj))) {
@@ -9940,7 +10205,7 @@ void Hurt_Player(Mon_Ptr *M) {	/* #710 */
       if (T > 0 && Player.HP > 0) {
 	Echo_Init();
 	/* With Monster[(*M)->Index] */
-	if (Player.Blind_count)
+	if (Blind)		/* #73 */
 	  strcat(F, "It");
 	else
 	  sprintf(F, "The %s", Monster[(*M)->Index].Long_Name);
@@ -9976,7 +10241,7 @@ void Hurt_Player(Mon_Ptr *M) {	/* #710 */
     } else if (Player.HP > 0) { /* The monster misses its normal attack */
       Echo_Init();
       /* With Monster[(*M)->Index] */
-      if (Player.Blind_count)
+      if (Blind)		/* #73 */
 	strcat(F, "It missed");
       else
 	sprintf(F, "The %s missed", Monster[(*M)->Index].Long_Name);
@@ -10608,9 +10873,9 @@ Q_Reason Play_The_Game() {	/* #55 */
 	Echo("You feel less confused now");
     }
     /* Handle blindness */
-    if (Player.Blind_count > 0) {
+    if (Player.Blind_count) {
       Player.Blind_count--;
-      if (Player.Blind_count == 0) {
+      if (Player.Blind_count <= 0) {
 	if (Player.Eaten_count)
 	  Player.Blind_count = 1; /* #71 what a hack */
 	else
@@ -10623,6 +10888,8 @@ Q_Reason Play_The_Game() {	/* #55 */
 
     /* Generate new monsters */
     /* With World */
+    /* #71 Num_mons is always < Max_Mons after ONE monster is killed */
+    /* #71 Notice that Num_mons is not incremented here: */
     if (World.Num_mons < World.Max_mons)
       if (Die(100) == 1) {
 	Gen_monster(World.Level, World.Room_array[Player.Loc.x][Player.Loc.y],
@@ -10656,24 +10923,24 @@ Q_Reason Play_The_Game() {	/* #55 */
 
     /* Does the player get healed? */
     /* With Player Do */
-    if (Player.Trapped_count == 0) /* #57 optimize slightly */
-      if (Player.Paralyzed_count == 0)
-	if (Player.Fixed_count == 0) {
-	  Player.Heal_count++;
-	  if (Player.Level < 13) { /* #68 */
-	    for (Hand = Left_H; Hand <= Right_H; ++Hand)
-	      if (Player.Cur_Ring[Hand])
-		if (Player.Cur_Ring[Hand]->Index == r_regen)
-		  Player.Heal_count += (13 - Player.Level);
-	    while (Player.Heal_count >= (13 - Player.Level)) {
-	      Player.Heal_count -= (13 - Player.Level);
-	      if (Player.HP < Player.Max_HP) {
-		Player.HP++;
-		Change_stats |= S_Bottom;
-	      }
-	    }
+    if (Player.Trapped_count == 0 && /* #57 optimize slightly */
+	Player.Paralyzed_count == 0 &&
+	Player.Fixed_count == 0) {
+      Player.Heal_count++;
+      if (Player.Level < 13) { /* #68 */
+	for (Hand = Left_H; Hand <= Right_H; ++Hand)
+	  if (Player.Cur_Ring[Hand] &&
+	      Player.Cur_Ring[Hand]->Index == r_regen)
+	    Player.Heal_count += (13 - Player.Level);
+	while (Player.Heal_count >= (13 - Player.Level)) {
+	  Player.Heal_count -= (13 - Player.Level);
+	  if (Player.HP < Player.Max_HP) {
+	    Player.HP++;
+	    Change_stats |= S_Bottom;
 	  }
 	}
+      }
+    }
 
     if (Player.Eaten_count > 0) {
       Player.HP -= Player.HP / Player.Eaten_count;

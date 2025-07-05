@@ -1847,18 +1847,6 @@ Treasures Treasure[Max_Treasure] = {
   {   1, Ring_T, r_decode },	/* #55 */
 };
 
-#if 0
-    Delta_Dir[-1,-1] := '7'; /* #70 */
-    Delta_Dir[-1,0] := '4';
-    Delta_Dir[-1,1] := '1';
-    Delta_Dir[0,-1] := '8';
-    Delta_Dir[0,0] := '5';
-    Delta_Dir[0,1] := '2';
-    Delta_Dir[1,-1] := '9';
-    Delta_Dir[1,0] := '6';
-    Delta_Dir[1,1] := '3';
-#endif
-
 char Delta_Dir[3][3] = { /* #70 */
   { '7', '4', '1' },
   { '8', '5', '2' },
@@ -1880,10 +1868,6 @@ View_Array Old_World = { '&', '&', '&' }; /* This is an empty */
 
 char *ConfigDir = ".rogue";	/* #75 */
 
-#if 0
-bool Virgin = true;
-bool Setup = true;
-#endif
 time_t Inidat;			/* #71 time and date game was started  */
 struct tms Inirun;		/* #71 initial process runtime */
 FILE *logfp = NULL;
@@ -2197,10 +2181,10 @@ void AddText(char *s) {
 /* Many changes, including ring buffer of last 5 echoes */
 void Echo(char *S) {
 
-  bool More,Save_Valid;
+  bool Save_Valid;
 
   if (! Empty_Echo)
-    More = !Wait_For_Space(false);
+    Wait_For_Space(false);
   Empty_Echo = false;
   if (S[0]) {
     strcpy(Last_echo[Echo_point], S);
@@ -2729,7 +2713,7 @@ void Write_Killer(char *fp, char Killer) {
   }
 } /* Write_killer */
 
-int Personal_scores(bool rstat) { /* #71 */
+int Show_Scores(bool rstat) { /* #71 */
   int I,J, level;
   bool Found;
   Personals Personal;
@@ -2740,6 +2724,8 @@ int Personal_scores(bool rstat) { /* #71 */
   int retval;
   FILE *F;
   time_t tt;
+  char kill_str[33];
+  char rest_str[60];
 
   for (I = 0; I < 10; ++I) {
     Personal[I].Score = 0;
@@ -2832,10 +2818,14 @@ int Personal_scores(bool rstat) { /* #71 */
       Write_Killer(Echo_Str, killer);
       if (Echo_Str[0] == '\0')
 	strcat(Echo_Str, " Unknown");
+      strncpy(kill_str, Echo_Str, 32);
+      kill_str[32] = '\0';
       sprintf(line, "%c %4d g.p.  %s-%s-%s   %4d  %s",
-	      best, Personal[I].Score, Day, Mon, Year, level, Echo_Str);
+	      best, Personal[I].Score, Day, Mon, Year, level, kill_str);
     } else {
-      sprintf(line, "%c %4d g.p.  %s", best, Personal[I].Score, Personal[I].Rest);
+      strncpy(rest_str, Personal[I].Rest, 59);
+      rest_str[59] = '\0';
+      sprintf(line, "%c %4d g.p.  %s", best, Personal[I].Score, rest_str);
     }
     AddText(line);
   }
@@ -2871,143 +2861,6 @@ void Lose_Old_World() {
   }
 } /* Lose_Old_World */
 
-#if 0
-Function Get_Names : Nam_ptr; /* #63 */
-Var
-  More : Boolean;
-  This_un : Name_Rec;
-  Names,Entry : Nam_ptr;
-Begin /* Get_names */
-  Lose_Old_World(); /* #70 Put it back in, maybe monster cleanup fixed it. */
-/* #69 I don't know why this is dying, but somehow the object list is */
-/*    getting fucked up, so Lose_Old_World dies in the Object Dispose */
-/*    loop.  I guess it's not exactly important to clean this stuff up */
-/*    so we'll just skip it fornaio. */
-  Names := NIL;
-  Reset(Nm,Files.Names^,'/I/D/F/O',0,0,[29]);
-  More := true;
-  While More Do
-    If EOF(Nm) Then
-      More := false
-    Else
-      Begin
-	Get(Nm);
-	This_Un.Num := Nm^.Num;
-	This_Un.Nam := Nm^.Nam;
-	If (Names = NIL) Then
-	  Begin
-	    New(Names);
-	    Entry := Names
-	  End
-	Else
-	  Begin
-	    New(Entry^.Next);
-	    Entry := Entry^.Next
-	  End;
-	Entry^ := This_un;
-	Entry^.Next := NIL
-      End;
-  Close(Nm);
-  Get_Names := Names
-End; /* Get_names */
-
-Procedure Write_name (Names : Nam_ptr; Usernum : Integer); /* #63 */
-Var
-  More : Boolean;
-  Name : Long_string;
-  Entry : Nam_ptr;
-Begin /* Write_name */
-  More := true;
-  Entry := Names;
-  While More Do
-    If (Entry = NIL) Then
-      More := false
-    Else
-      If (Entry^.Num = Usernum) Then
-      More := false
-    Else
-      Entry := Entry^.Next;
-  If (Entry = NIL) Then
-    Begin
-      JSYS(41B,1;-1:Name,Usernum); /* DIRST */
-      Fix_String(Name);
-      Write(tty,Name:25)
-    End
-  Else
-    Write(tty,Entry^.Nam:25)
-End; /* Write_name */
-#endif
-
-void Show_Scores(bool rstat) {
-  bool Show_em;
-
-  Show_em = (Player_Move != CHDEL && Player_Move != CHESC);
-#if 0
-  This_guy : Score_rec;
-  I : Integer;
-  Ch : Char;
-  Names,Entry : Nam_ptr;
-  All_time,Weekly : Score_array;
-Begin /* Show_Scores */
-  If Isddt Then
-    Writeln(tty)
-  Else
-    Begin
-      Names := NIL;
-      JSYS(13B;;This_guy.User);	/* GJINF */
-      This_guy.Score := Score;
-      This_guy.Level := Level;
-      This_guy.Day := '     ';
-      This_guy.Killer := Killer;
-      If Not Scores(All_time,Weekly,This_guy,Files.Score^) Then
-	Show_em := false; /* #48 */
-      Deinterrupts;
-      If Show_em Then
-	Begin
-	  Names := Get_names; /* #63 */
-	  Writeln(tty,'Weekly high scores:');
-	  For I := 1 To 41 Do Write(Tty,'-'); Writeln(Tty);
-	  For I := 1 To 10 Do
-	    With Weekly[I] Do
-	      If Score > 0 Then
-		Begin
-		  Write(tty,I:2,'. ',Score:5,' ');
-		  Write_name(Names,User); /* #63 */
-		  Write(tty,' ',Day:5);
-		  Write_killer(tty,Killer);
-		  Writeln(tty,' (',Level:0,')');
-		End;
-	  Write(tty,'[Press space to continue, delete to stop]'); /* #66 */
-	  Show_em := (Comand() <> Chr(177B)); /* #50 */
-	End;
-      If Show_em Then
-	Begin
-	  Cls;
-	  Writeln(tty,'All-time high scores:');
-	  For I := 1 To 41 Do Write(tty,'-'); Writeln(tty);
-	  For I := 1 To 10 Do
-	    With All_time[I] Do
-	      If Score > 0 Then
-		Begin
-		  Write(tty,I:2,'. ',Score:5,' ');
-		  Write_name(Names,User); /* #63 */
-		  Write(tty,' ',Day:5);
-		  Write_killer(tty,Killer);
-		  Writeln(tty,' (',Level:0,')')
-		End
-	End /* If Show_Em */
-      Else
-	Writeln(tty);
-      While (Names <> NIL) Do /* #63 */
-	Begin
-	  Entry := Names;
-	  Names := Names^.Next;
-	  Dispose(Entry)
-	End;
-#endif
-  Personal_scores(rstat);	/* #71 */
-} /* Show_Scores */
-
 /* return a number between 1 and Limit, inclusive */
 int Die(int Limit) {
   int val;
@@ -3039,20 +2892,6 @@ int Sign(int I) {
 void FUL() {
 
   int  Room;
-
-#if 0
-/* these next two sets of array assignments should be in an initprocedure,
-   but this will have to do until it's determined why their values get
-   changed.  */
-
-  Orig_X[1] := 1;  Orig_X[2] := 27;  Orig_X[3] := 53;
-  Orig_X[4] := 1;  Orig_X[5] := 27;  Orig_X[6] := 53;
-  Orig_X[7] := 1;  Orig_X[8] := 27;  Orig_X[9] := 53;
-
-  Orig_Y[1] := 2;  Orig_Y[2] := 2;   Orig_Y[3] := 2;
-  Orig_Y[4] := 9;  Orig_Y[5] := 9;   Orig_Y[6] := 9;
-  Orig_Y[7] := 16; Orig_Y[8] := 16;  Orig_Y[9] := 16;
-#endif
 
   for (Room = 0; Room < Max_Room; ++Room) {
     World.Rooms[Room].Abs_X = Die(Max_Cell_X - 4) + Orig_X[Room] - 1;
@@ -4376,12 +4215,6 @@ void Init_Obj_Descriptions() {
 	sp->Desc[Start] = SPACE;
 	Start++;
       }
-#if 0
-      if (Start == Name_Len - 1) { /* #66 */
-	sp->Desc[Start] = SPACE;
-	Start++;
-      }
-#endif
     }
     sp->Desc[0] = toupper(sp->Desc[0]); /* #66 capitalize it */
     sp->Desc[Name_Len] = '\0';	/* #71 just in case */
@@ -4437,13 +4270,6 @@ void First_Init() {
     Okmons[ch] = true;
     Okmons[toupper(ch)] = true;
   }
-#if 0
-  For I := X_orig to S_max_x
-    For J := Y_orig to S_max_y
-      false_array[I,J] := false;
-  For I := 1 to 80
-    Nulls[I] := Chr(0);
-#endif
   F_temp = false;
   Fast = false;
   Want_scores = true;		/* #71 */
@@ -7636,57 +7462,13 @@ void Set_options() {
 
   Wait_For_Space(true);
 
-#if 0
-   strcpy(New1, Save_file);	/* save original */
-   Line = Line + 1;
-   Pos = Line;
-   Repeat {
-     DCA(1,Pos);
-     Cll;
-     Save_File = New1;
-     Write(tty,'Save file: ',Save_File);
-     DCA(12,Pos);
-     More = true;
-     If Get_Line(New2,Nm_Len)
-       {
-	 If Nm_Len > 0
-	   Save_file = New2;
-	 Name_Ok = Chk_File(Save_File);
-	 If Not Name_Ok
-	   {
-	     Line = Pos + 1;
-	     Writeln(tty);
-	     Cll;
-	     Write(tty,'Invalid file name, try again');
-	   }
-       }
-     Else
-       Name_Ok = true;
-     DCA(12,Pos);
-     Write(tty,Save_File);
-   } Until Name_Ok;
-
-   More = Wait_For_Space(true);
-   For J = Redisp_y_orig to Line {
-     DCA(1,J);
-     Cll;
-     Scr_Text(J,Spaces);
-   }
-   Redisplay;
-   For J = Redisp_y_orig to Line
-     World.Lines[J] = true;
-   Update_Screen;	/* #63 */
-#endif
   Restore_screen();		/* #71 */
 } /* Set_Options */
 
 bool Throw() {
   Obj_Ptr This_one;
   char Ch,Dir;
-  bool retval;
   Weapons *wp;
-
-  retval = false;
 
   This_one = Choose_Item(Throw_A, Weapon_T, true, true); /* #54 */
   if (This_one == NULL)
@@ -8397,10 +8179,8 @@ void M_Ouch_MSG(char *F, Mon_Ptr M, int T, Obj_Ptr Weap) {
 
 /* Check_Vampiric was internal to Attack() */
 void Check_Vampiric(Obj_Ptr Enforcer, int T) {
-  int How_Many;
   Hand_Type Hand;
 
-  How_Many = T;
   if (Enforcer->Obj_Typ == Weapon_T && T > 0) {
     /* With Player */
     for (Hand = Left_H; Hand <= Right_H; ++Hand)
@@ -8667,7 +8447,6 @@ bool Can_move_to(int X, int Y) {
 
 bool Down_Stairs() {
   int line;
-  char Ch;
 
   if (Player.Stuck)
     Give_stuck_message();
@@ -8689,7 +8468,7 @@ bool Down_Stairs() {
       move(line + 2, 0);
       addstr("[Press any key to continue] ");
       refresh();
-      Ch = Comand();
+      Comand();
       return true;
     } else {
       Down_a_level();
@@ -8721,588 +8500,6 @@ bool Stop(bool Foo) {
   return false;
 } /* Stop */
 
-#if 0
-Procedure Save_game {
-Var
-  S_File : Long_String;
-  I,J,Arm_num,Wep_num,L_r_num,R_r_num,Disk_address,Fudge : Integer;
-  P : Obj_ptr;
-  Q : Mon_ptr;
-  R : Trap_ptr;
-  Uname : Name_string;
-  Ch : Char;
-  G : Text;
-Begin /* Save_game */
-  For I = 1 to Name_Len
-    S_File[I] = Save_File[I];
-  S_File[Name_Len + 1] = Chr(0);
-  Fix_String(S_File);
-  Echo_Init;
-  Write(F,'Saving as: ',Save_File);
-  Empty_Echo = true;
-  Echo(S);
-  rewrite(g,S_file,0,0,[2,14],60000b); /* buffered by bytes */
-  getfdb(S_File,disk_address);
-  writeln(g,disk_address:0);
-  writeln(g,seed:0);
-  fudge = (disk_address Mod 100B) + (seed Mod 40B);
-  Writeln(g,fudge - 1:0);
-  with world
-    for i = x_orig to s_max_x
-      for j = y_orig to s_max_y
-	{
-	  write(g,s_world[i,j],this_screen[j,i],screen[j,i]);
-	  if mon[i,j] == Chr(0)
-	    then write(g,' ')
-	    else write(g,mon[i,j]);
-	  if obj[i,j] == Chr(0)
-	    then writeln(g,' ')
-	    else writeln(g,obj[i,j]);
-	  writeln(g,room_array[i,j]:0);
-	  Writeln(g,Ord(seeable[i,j]):0);
-	  Writeln(g,Ord(seen[i,j]):0);
-	  Writeln(g,'1'); /* Ord(Show[i,j]):0); */
-	}
-  for j = y_orig to s_max_y
-    Writeln(g,Ord(world.lines[j]):0);
-  writeln(g,world.level:0,' ',world.num_mons:0,' ',world.max_mons:0,' ',seed:0);
-  for i = 1 to max_room
-    with world.rooms[i]
-      {
-	writeln(g,max_x:0,' ',max_y:0,' ',abs_x:0,' ',abs_y:0);
-	Writeln(g,Ord(light):0);
-	Writeln(g,Ord(existent):0);
-	Writeln(g,Ord(seen):0);
-	for j = 0 to max_doors
-	  writeln(g,doors[j].abs_loc.x:0,' ',doors[j].abs_loc.y:0,' ',doors[j].secret:0);
-	writeln(g,orig_x[i]:0,' ',orig_y[i]:0);
-	Writeln(g,Ord(m_used_list[i]):0);
-	Writeln(g,Ord(o_used_list[i]):0);
-      }
-  for i = 1 to max_monster
-    writeln(g,monster[i].min_level:0);
-  for i = 1 to max_potion
-    With potion[i]
-      {
-	writeln(g,desc:Name_Len,d_leng:0);
-      Writeln(g,Ord(called):0);
-      Writeln(g,Ord(id):0);
-      }
-  for i = 1 to max_scroll
-    With scroll[I]
-      {
-	writeln(g,desc:Name_Len,d_leng:0);
-	Writeln(g,Ord(called):0);
-	Writeln(g,Ord(id):0);
-      }
-  for i = 1 to max_wand
-    With wand[i]
-      {
-	writeln(g,desc:Name_Len,d_leng:0);
-	Writeln(g,Ord(called):0);
-	Writeln(g,Ord(id):0);
-	Writeln(g,Ord(is_wand):0);
-      }
-  for i = 1 to max_ring
-    With ring[i]
-      {
-	writeln(g,desc:Name_Len,d_leng:0);
-	Writeln(g,Ord(called):0);
-	Writeln(g,Ord(id):0);
-      }
-
-  arm_num = 0;
-  wep_num = 0;
-  l_r_num = 0;
-  r_r_num = 0;
-  i = 1;
-  p = world.objs;
-  while p != NULL
-    {
-      writeln(g,i:0,' ',ord(p->obj_typ):0,' ',p->loc.x:0,' ',p->loc.y:0);
-      writeln(g,p->quan:0,' ',p->index:0,' ',p->plus_hit:0,' ',p->plus_dam:0);
-      Writeln(g,Ord(p->know_magic):0);
-      Writeln(g,Ord(P->cursed):0);
-      p = p->next;
-    }
-  p = player.obj_list;
-  i = 2;
-  j = 0;
-  while p != NULL
-    {
-      j = j+1;
-      if p == player.cur_arm
-	arm_num = j
-      Else If p == player.cur_wep
-	wep_num = j
-      Else If p == player.Cur_ring[Left_H]
-	l_r_num = j
-      Else If p == player.Cur_ring[Right_H]
-	r_r_num = j;
-      writeln(g,i:0,' ',ord(p->obj_typ):0,' ',p->loc.x:0,' ',p->loc.y:0);
-      writeln(g,p->quan:0,' ',p->index:0,' ',p->plus_hit:0,' ',p->plus_dam:0);
-      Writeln(g,Ord(p->know_magic):0);
-      Writeln(g,Ord(p->cursed):0);
-      p = p->next;
-    }
-  i = 3;
-  q = world.monsters;
-  while q != NULL
-    {
-      writeln(g,i:0,' ',q->index:0,' ',q->hp:0,' ',q->loc.x:0,' ',q->loc.y:0,' ',q->paralyzed_count:0);
-      writeln(g,q->speed:0,' ',q->speed_count:0,' ',q->who_first:0,' ',q->confused_count:0);
-      Writeln(g,Ord(q->awake):0);
-      q = q->next;
-    }
-  i = 4;
-  r = world.traps;
-  while r != NULL
-    {
-      writeln(g,i:0,' ',r->loc.x:0,' ',r->loc.y:0,' ',r->chance:0,' ',r->kind:0);
-      r = r->next;
-    }
-  writeln(g,i+1:0); /* end of lists */
-  writeln(g,arm_num:0,' ',wep_num:0,' ',l_r_num:0,' ',r_r_num:0);
-  with player
-    {
-      writeln(g,gold*fudge:0,' ',xp:0,' ',level:0,' ',hp:0,' ',name);
-      Writeln(g,max_hp:0,' ',st:0,' ',max_st:0,' ',dx:0,' ',max_dx:0,' ',iq:0,' ',max_iq:0);
-      writeln(g,ac-fudge:0,' ',Died_Count:0,' ',faint_count:0,' ',invis_count:0,' ',speed:0,' ',speed_count:0);
-      writeln(g,confused_count:0,' ',blind_count:0,' ',last_meal:0,' ',heal_count:0,' ',loc.x:0,' ',loc.y:0);
-      writeln(g,paralyzed_count:0,' ',sleep_count:0,' ',trapped_count:0,' ',fixed_count:0);
-      Writeln(g,Ord(will_confuse):0);
-      Writeln(g,Ord(stuck):0);
-      Writeln(g,Ord(has_amulet):0);
-    }
-  writeln(g,player.level+player.gold+player.ST+Player.DX+disk_address:0);
-  writeln(g,fruit_name);
-  Writeln(g,Save_File);
-  writeln(g,amulet_level+fudge:0);
-  writeln(g,blank_message:0);
-  writeln(g,scare_count:0);
-  Writeln(g,Player.eaten_Count:0,' ',Player.Prev.X:0,' ',Player.Prev.Y:0);
-  close(g);
-  fiddle_fdb(S_File);
-  saved = true;
-  quit_game = true;
-} /* Save_game */
-
-Procedure Save_The_Game {
-Var
-  Ch : Char;
-Begin /* Save_The_Game */
-  Empty_Echo = true;
-  Echo("Really save the game (Y or N) ?");
-  Move_To_Echo();
-  Repeat
-    Ch = Comand()
-  Until (Ch in ['y','n','Y','N']);
-  If (Ch in ['Y','y'])
-    Save_Game
-  Else
-    {
-      Clear_Echo();
-      Redisplay()
-    }
-} /* Save_The_Game */
-
-Function Restore_game : Boolean {
-Var
-  R_File : Long_String;
-  i,j,arm_num,wep_num,l_r_num,r_r_num,disk_address,fudge,checknum:integer;
-  ok_restore : Boolean;
-  p:obj_ptr;
-  q:mon_ptr;
-  r:trap_ptr;
-  g:text;
-  uname:name_string;
-  temp:char;
-begin /* Restore_game */
-  For I = 1 to Name_Len
-    R_File[I] = R_File_Name[I];
-  R_File[Name_Len + 1] = Chr(0);
-  Fix_String(R_File);
-  ok_restore = true;
-  fiddle_fdb(R_File);
-  getfdb(R_File,disk_address);
-  reset(g,r_file,0,0,[2],60000b);
-  readln(g,i);
-  Readln(g,seed);
-  Readln(g,fudge);
-  fudge = fudge + 1;
-  If ((i != disk_address) || (fudge != ((disk_address Mod 100B) + (seed Mod 40B))))
-
-      {
-	close(g);
-	edelete(R_File);
-	ok_restore = false;
-      }
-    Else
-      {
-  CLS;
-  Writeln(tty,'Restoring from: ',R_file_name);
-  with world
-    for i = x_orig to s_max_x
-      for j = y_orig to s_max_y
-	{
-	  read(g,s_world[i,j],this_screen[j,i],screen[j,i]);
-	  read(g,temp);
-	  if temp == ' '
-	    then mon[i,j] = Chr(0)
-	    Else Mon[i,j] = Temp;
-	  readln(g,temp);
-	  if temp == ' '
-	    then obj[i,j] = Chr(0)
-	    Else obj[i,j] = Temp;
-	  readln(g,room_array[i,j]);
-	  readln(g,temp);
-	  seeable[i,j] = (temp == '1');
-	  readln(g,temp);
-	  seen[i,j] = (temp == '1');
-	  readln(g,temp);
-/*	  show[i,j] = (temp == '1'); */
-	}
-  for j = y_orig to s_max_y
-    {
-      readln(g,temp);
-      world.lines[j] = (temp == '1');
-    }
-  readln(g,world.level,world.num_mons,world.max_mons,seed);
-  for i = 1 to max_room
-    with world.rooms[i]
-      {
-	readln(g,max_x,max_y,abs_x,abs_y);
-	readln(g,temp);
-	light = (temp == '1');
-	readln(g,temp);
-	existent = (temp == '1');
-	readln(g,temp);
-	seen = (temp == '1');
-	for j = 0 to max_doors
-	  readln(g,doors[j].abs_loc.x,doors[j].abs_loc.y,doors[j].secret);
-	readln(g,orig_x[i],orig_y[i]);
-	readln(g,temp);
-	m_used_list[i] = (temp == '1');
-	readln(g,temp);
-	o_used_list[i] = (temp == '1');
-      }
-  for i = 1 to max_monster
-    readln(g,monster[i].min_level);
-  for i = 1 to max_potion
-    {
-      readln(g,potion[i].desc,potion[i].d_leng);
-      readln(g,temp);
-      potion[i].called = (temp == '1');
-      readln(g,temp);
-      potion[i].id = (temp == '1');
-    }
-  for i = 1 to max_scroll
-    {
-      readln(g,scroll[i].desc,scroll[i].d_leng);
-      readln(g,temp);
-      scroll[i].called = (temp == '1');
-      readln(g,temp);
-      scroll[i].id = (temp == '1');
-    }
-  for i = 1 to max_wand
-    {
-      readln(g,wand[i].desc,wand[i].d_leng);
-      readln(g,temp);
-      wand[i].called = (temp == '1');
-      readln(g,temp);
-      wand[i].id = (temp == '1');
-      readln(g,temp);
-      wand[i].is_wand = (temp == '1');
-    }
-  for i = 1 to max_ring
-    {
-      readln(g,ring[i].desc,ring[i].d_leng);
-      readln(g,temp);
-      ring[i].called = (temp == '1');
-      readln(g,temp);
-      ring[i].id = (temp == '1');
-    }
-
-  arm_num = 0;
-  wep_num = 0;
-  l_r_num = 0;
-  r_r_num = 0;
-  world.objs = NULL;
-  new(p);
-  read(g,i);
-  while i == 1
-    {
-      if world.objs == NULL
-	then world.objs = p;
-      read(g,j);
-      case j of {
-	0: p->obj_typ = amulet_t;
-	1: p->obj_typ = food_t;
-	2: p->obj_typ = ring_t;
-	3: p->obj_typ = wand_t;
-	4: p->obj_typ = scroll_t;
-	5: p->obj_typ = potion_t;
-	6: p->obj_typ = armor_t;
-	7: p->obj_typ = weapon_t;
-	8: p->obj_typ = gold_t;
-	others: {
-		  writeln(tty,'Error - Bad world object in restore_game');
-		  ok_restore = false;
-		}
-      }
-      readln(g,p->loc.x,p->loc.y);
-      readln(g,p->quan,p->index,p->plus_hit,p->plus_dam);
-      readln(g,temp);
-      p->know_magic = (temp == '1');
-      readln(g,temp);
-      p->cursed = (temp == '1');
-      read(g,i);
-      if i == 1
-
-	  {
-	    new(p->next);
-	    p = p->next;
-	  }
-	else p->next = NULL;
-    } /* while i == 1 */
-  new(p);
-  player.obj_list = NULL;
-  while i == 2
-    {
-      if player.obj_list == NULL
-	then player.obj_list = p;
-      read(g,j);
-      case j of {
-	0: p->obj_typ = amulet_t;
-	1: p->obj_typ = food_t;
-	2: p->obj_typ = ring_t;
-	3: p->obj_typ = wand_t;
-	4: p->obj_typ = scroll_t;
-	5: p->obj_typ = potion_t;
-	6: p->obj_typ = armor_t;
-	7: p->obj_typ = weapon_t;
-	8: p->obj_typ = gold_t;
-	others: {
-		  writeln(tty,'Error - Bad player possession in restore_game');
-		  ok_restore = false;
-		}
-      }
-      readln(g,p->loc.x,p->loc.y);
-      readln(g,p->quan,p->index,p->plus_hit,p->plus_dam);
-      readln(g,temp);
-      p->know_magic = (temp == '1');
-      readln(g,temp);
-      p->cursed = (temp == '1');
-      read(g,i);
-      if i == 2
-
-	  {
-	    new(p->next);
-	    p = p->next;
-	  }
-	else p->next = NULL;
-    }
-
-  world.monsters = NULL;
-  new(q);
-  while i == 3
-    {
-      if world.monsters == NULL
-	then world.monsters = q;
-      readln(g,q->index,q->hp,q->loc.x,q->loc.y,q->paralyzed_count);
-      readln(g,q->speed,q->speed_count,q->who_first,q->confused_count);
-      readln(g,temp);
-      q->awake = (temp == '1');
-      read(g,i);
-      if i == 3
-
-	  {
-	    new(q->next);
-	    q = q->next;
-	  }
-	else q->next = NULL;
-    }
-  world.traps = NULL;
-  new(r);
-  while i == 4
-    {
-      if world.traps == NULL
-	then world.traps = r;
-      readln(g,r->loc.x,r->loc.y,r->chance,r->kind);
-      read(g,i);
-      if i == 4
-
-	  {
-	    new(r->next);
-	    r = r->next;
-	  }
-	else r->next = NULL;
-    }
-  if (i != 5)
-    Then ok_restore = false;
-  readln(g,arm_num,wep_num,l_r_num,r_r_num);
-  with player
-    {
-      readln(g,gold,xp,level,hp,temp,name);
-      gold = gold div fudge;
-      Readln(g,max_hp,st,max_st,dx,max_dx,iq,max_iq);
-      readln(g,ac,Died_Count,faint_count,invis_count,speed,speed_count);
-      ac = ac + fudge;
-      readln(g,confused_count,blind_count,last_meal,heal_count,loc.x,loc.y);
-      readln(g,paralyzed_count,sleep_count,trapped_count,fixed_count);
-      readln(g,temp);
-      will_confuse = (temp == '1');
-      readln(g,temp);
-      stuck = (temp == '1');
-      readln(g,temp);
-      has_amulet = (temp == '1');
-      cur_arm = NULL;
-      cur_wep = NULL;
-      Cur_ring[Left_H] = NULL;
-      Cur_ring[Right_H] = NULL;
-    }
-  readln(g,checknum);
-  if (checknum != player.gold+player.level+disk_address+player.ST+player.DX)
-    Then ok_restore = false;
-  j = 0;
-  p = player.obj_list;
-  while p != NULL
-    {
-      j = j+1;
-      if j == arm_num
-	player.cur_arm = p
-      Else If j == wep_num
-	player.cur_wep = p
-      Else If j == l_r_num
-	player.Cur_ring[Left_H] = p
-      Else If j == r_r_num
-	player.Cur_ring[Right_H] = p;
-      p = p->next;
-    } /* while p != NULL */
-
-  readln(g,fruit_name);
-  readln(g,save_file);
-  readln(g,amulet_level);
-  amulet_Level = Amulet_level - fudge;
-  readln(g,blank_message);
-  readln(g,scare_count);
-  Readln(g,Player.eaten_Count,Player.Prev.X,Player.Prev.Y);
-  If (Player.Eaten_Count > 0) {
-    Monster[m_purple].AC = 9;
-  }
-  close(g);
-  Edelete(R_File);
-
-  F_temp = false; /* #55 Set up For restart */
-  Fast = false;
-  Virgin = false;
-  Dead = false;
-  Quit_game = false;
-  Empty_Echo = true;
-  For I = X_orig To S_max_x
-    For J = Y_orig To S_max_y
-      false_array[I,J] = false;
-  For I = 1 To 80 Do Nulls[I] = Chr(0);
-}
-  If Not Ok_Restore
-    Writeln(tty,'The save file has been tampered with and has been deleted.')
-  Else
-    Restore_screen;
-  Restore_Game = Ok_restore
-} /* Restore_game */
-
-/* Routine to find out who is using a particular player name.
-   Appropriate messages for non-existent users and unknown names. */
-
-Procedure Whois {
-Var
-  Who,Uwho,Name:Name_string;
-  Real_user:Long_string;
-  Found,Is_user,More:Boolean;
-  Usernum,Exists,Who_length,Name_length,Match:Integer;
-
-Begin /* Whois */
-  If Switches.Terse_swi
-    Echo("Whois:")
-  Else
-    Echo("Enter player name to identify:");
-  Move_To_Echo();
-  If Get_Line(Who,Who_length) Then /* #54 */
-    {
-      Empty_Echo = true;
-      Clear_Echo();
-      Redisplay;
-      Null_end_name(Who,UWho);
-      Is_user = Valid(UWho,Usernum);
-      Upcase(UWho,Uwho);
-      Reset(Nm,Files.Names^,'/D/F/O',0,0,[29]);
-      Found = false;
-      More = true;
-      While More
-	If EOF(Nm)
-	  More = false
-	Else If Is_user
-	  {
-	    If (Nm->Num == Usernum)
-	      {
-		Found = true;
-		More = false;
-		Echo_init;
-		JSYS(41B,1;Real_user,Nm->Num); /* DIRST */
-		Fix_String(Real_User);
-		Name_Length = 80;
-		While (Real_user[Name_length] == ' ')
-		  Name_length = Name_length - 1;
-		Write(F,Real_User:Name_Length,': ',Nm->Nam);
-		Echo(S)
-	      }
-	    Else
-	      Get(Nm)
-	  }
-	Else
-	  {
-	    JSYS(41B,1,Exists;Real_user,Nm->Num); /* DIRST */
-	    If (Exists == 2)
-	      {
-		Null_end_name(Nm->Nam,Name);
-		JSYS(565B;0,-1:UWho,-1:Name;Match); /* WILD% */
-		If (Match == 0)
-		  {
-		    Fix_String(Name);
-		    Name_Length = Name_Len;
-		    While (Name[Name_length] == ' ')
-		      Name_length = Name_length - 1;
-		    Echo_Init;
-		    Write(F,Name:Name_length,': ');
-		    Fix_String(Real_User); /* #60 */
-		    Write(F,Real_user);
-		    If Found
-		      More = Wait_For_Space(false);
-		    Found = true;
-		    Empty_Echo = true;
-		    If More
-		      Echo(S)
-		    Else
-		      {
-			Clear_Echo();
-			Redisplay
-		      }
-		  }
-	      }
-	    Get(Nm)
-	  }
-      If Not Found
-	Echo("That name is not currently in use");
-      Close(Nm)
-    }
-  Else
-    {
-      Empty_Echo = true;
-      Clear_echo();
-    }
-} /* Whois */
-#endif
-
 void Type_version() {
   Long_string vers;
   sprintf(vers, "This is ECL Rogue (for Linux), version %d.%d(%d)",
@@ -9327,7 +8524,6 @@ void Version_Text() {
 } /* Version_Text */
 
 void Disp_Version() {
-  char Ch;
 
   clear();
   Version_Text();
@@ -9336,7 +8532,7 @@ void Disp_Version() {
   addstr(" via mail.");
   TextLine++;
   AddText("[Type anything to continue] ");
-  Ch = Comand();
+  Comand();
   Restore_screen();
 } /* Disp_Version */
 
@@ -9602,7 +8798,6 @@ bool In_Bounds(int Y, int X) {
 void Movement(char Ch) {
   int T,U,
   I,J;
-  bool Dummy;
   Mon_Ptr M;
   char gm;
 
@@ -9669,11 +8864,11 @@ void Movement(char Ch) {
 	M = Find_Mon(World.Monsters, U, T);
 	if (! F_temp) {
 	  Moved = true;
-	  Dummy = Attack(U,T,Player.Cur_Wep);
+	  Attack(U,T,Player.Cur_Wep);
 	} else if (M)
 	  if (M->Index == m_mimic) {
 	    Moved = true;
-	    Dummy = Attack(U,T,Player.Cur_Wep);
+	    Attack(U,T,Player.Cur_Wep);
 	  } else
 	    Do_Done = false;
 	else
@@ -9768,7 +8963,6 @@ void Ctrl_t() {
 
 void Do_Player() {
   int Ch;
-  bool Bogus;
   Hand_Type Hand;
 
   Dont_Turn = ! Switches.Turn_swi;
@@ -9801,7 +8995,7 @@ void Do_Player() {
     case '9':
       if (Player.Eaten_count > 0) { /* next line */
 	Valid_Command = false;
-	Bogus = Attack(Player.Loc.x, Player.Loc.y, Player.Cur_Wep);
+	Attack(Player.Loc.x, Player.Loc.y, Player.Cur_Wep);
       } /* PURPLE GERM stuff */
       else {
 	Move_Player(Ch);
@@ -9847,9 +9041,6 @@ void Do_Player() {
     case '^': Do_Done = Trap_Identify(); break;
     case 'C': Do_Done = Call_obj(); break;
     case 'Q': Do_Done = Stop(true); break;
-#if 0
-    case 'S': Save_The_Game(); break;
-#endif
 
     case 'o':
     case 'O':
@@ -9879,9 +9070,6 @@ void Do_Player() {
       switch (Ch) {
       case CHLFD: Do_Done = false; break;
       case CHFFD: Restore_screen(); break; /* ^L */
-#if 0
-      case CHCTW: Whois(); break; /* ^W */
-#endif
       case CHCTT:  /* ^T */
 	Empty_Echo = true;
 	Ctrl_t();		/* #60 */
@@ -10717,89 +9905,6 @@ void Move_monsters(Mon_Ptr M) {
   }
 } /* Move_monsters */
 
-#if 0
-Procedure Create_file (Name : Long_string; Prot : String8) {
-  Filename : Long_string;
-  Overwrite : Boolean;
-  I,J : Integer;
-
-  Filename = Name;
-  I = 80;
-  While (Ord(Name[I]) == 0) Do I = I - 1;
-  Overwrite = true;
-  Write(tty,'Creating ');
-  JSYS(76B;-1:Filename); /* PSOUT */
-  Writeln(tty);
-  Reset(F,Filename,'/D/F/O/I',[14]); /* no jobwide logical names */
-  If Erstat(F) == 0
-    {
-      Writeln(tty,'File already exists; retaining old version.');
-      Overwrite = false
-    }
-  Close(F);
-  For J = 1 to 8
-    Filename[I+J] = Prot[J];
-  If Overwrite
-    {
-      Rewrite(F,Filename,'/D/F/O',[14]); /* no jobwide logical names */
-      If Erstat(F) != 0 Then /* any errors? */
-	Writeln(tty,'I/O error when creating file, file not created.');
-      Close(F)
-    }
-} /* Create_file */
-
-Procedure Perhaps_Save {
-  I, J : Integer;
-  Ch : Char;
-
-  For J = Real_Y_Orig to Real_Max_Y
-    {
-      World.Lines[J] = true;
-      For I = Real_X_Orig to Real_Max_X
-	World.Screen[j,i] = ' '
-    }
-  Change_Stats = [];
-  Scr_Text(3,'A large cloud of green smoke appears in front of you.  It clears away');
-  Scr_Text(4,'to reveal a tall wizard, clothed in grey.  He fixes you with a steely');
-  Scr_Text(5,'glare and declares, "The average of load is too high."  With that he');
-  Scr_Text(6,'makes a single pass over you with his hands, and everything around you');
-  Scr_Text(7,'fades away into a grey nothingness.');
-  Redisplay;
-  Empty_Echo = false;
-  Echo("Would you like to save your game so far?");
-  Move_To_Echo();
-  do {
-    Ch = Comand();
-    If (Ch in ['n','N']) Then /* #59 */
-      {
-	Empty_Echo = true;
-	Echo("Are you sure?");
-	Move_To_Echo();
-	Repeat
-	  Ch = Comand()
-	Until (Ch In ['y','Y','n','N']);
-	If (Ch in ['y','Y'])
-	  Ch = 'N'
-	Else
-	  {
-	    Ch = ' ';
-	    Empty_Echo = true;
-	    Echo("Would you like to save your game so far?");
-	    Move_To_Echo();
-	  }
-      }
-  } Until (Ch In ['y','Y','n','N']);
-  If (Ch In ['y','Y'])
-    Save_Game
-  Else
-    {
-      Quit_game = true;
-      Killer = ' ';
-      Want_scores = false;
-    }
-} /* Perhaps_Save */
-#endif
-
 void Center(char *strP, char *centerP) {
   int I,Len;
 
@@ -11039,13 +10144,6 @@ Q_Reason Play_The_Game() {	/* #55 */
 	Change_stats |= S_Bottom;
     }
 
-#if 0
-    if (Change_stats && !Valid_Command) {
-      /*      if (Game_Check) */
-      If Not_Staffer
-	    Perhaps_Save
-      }
-#endif
     if (! (Dead || Quit_game)) {
       Update_Screen();		/* Show what the player did */
       Move_monsters(World.Monsters); /* Move the icky-bobs */
@@ -11076,80 +10174,8 @@ Q_Reason Play_The_Game() {	/* #55 */
   return Quit_R;		/* #71 ??? */
 } /* Play_The_Game */
 
-#if 0
-Procedure Do_setup { /* #62 Many changes to this procedure */
-  More : Boolean;
-
-  Init_staffy('ROGUE',Bug_Add,Files); /* #62 */
-  Create_file(Files.Score^,';P776060');
-  Reset(F,Files.Score^,'/d/f/o/i');
-  Close(F); /* to make reference date non-zero */
-  Create_file(Files.Names^,';P776060');
-  Create_file(Files.Log^,';P776464');
-  Create_File(Files.Message^,';P774040'); /* #57 */
-  With Files
-    {
-      Fix_String(Log^);
-      Fix_String(Message^);
-      Fix_String(Names^);
-      Fix_String(Score^)
-    }
-  Writeln(tty,'Saving as ROGUE.EXE');
-  Setup = false;
-  Save_self(Rogue_version,Rogue_Update,Rogue_edit) /* #50 */
-} /* Do_Setup */
-#endif
-
 void First_Screen() {	/* #57 changed a lot */
 
-#if 0
-  Displayed = Not_Staffer;
-  If Displayed
-    {
-      Type_Version;
-      Writeln(tty);
-      Writeln(tty,'WARNING!  ECL ROGUE is an extremely time-consuming game to run.');
-      Writeln(tty,'          If you are low on funds, you should not play.');
-      Writeln(tty,'          Please have consideration for those trying to do work.');
-      Writeln(tty);
-    }
-  Reset(F,Files.Message^,'/D/F/O',[14]);
-  If (Erstat(F) == 0B)
-    If Not EOF(F)
-      {
-	If Not Displayed
-	  {
-	    Type_Version;
-	    Writeln(tty);
-	  }
-	While Not EOF(F)
-	  {
-	    Readln(F,Line:Len);
-	    Writeln(tty,Line:Len);
-	  }
-	Displayed = true;
-      }
-  Reset(F,'Rogue.Scores','/D/F/O/I',[14]);
-  If (Erstat(F) != 0)
-    {
-      If Not Displayed
-	Type_Version;
-      Displayed = true;
-    }
-  If Displayed
-    Writeln(tty);
-  If Displayed
-    {
-      Write(tty,'Report ECL ROGUE bugs via mail to ');
-      JSYS(76B;-1:Bug_Add); /* PSOUT */
-      Writeln(tty,'.');
-      Writeln(tty,'Be specific about the errors, and save the game if possible.');
-      DCA(1,24);
-      Write(tty,'[Type anything to continue]');
-      Ch = Comand();
-      Cls;
-    }
-#endif
 
   Empty_Echo = true;
   Echo_Init();
@@ -11176,25 +10202,6 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-#if 0
-  If Setup
-    Do_Setup;
-  Else If Not Virgin
-    Writeln(tty,'?ROGUE: May not be restarted');
-  Else If NoPlay Then /* #47 can he play? */
-    {
-      Writeln(tty,'?ROGUE: The ROGUE-Master has denied you access.');
-      Writeln(tty,'        Contact the ROGUE-Master for further obfuscation.');
-    }
-  Else If (Game_Check && Not Staffy) Then /* #57 */
-    {
-      Writeln(tty,'I''m terribly sorry, but the Dungeon of Doom is closed.');
-      Writeln(tty,'Only wizards are permitted within the dungeon right now.');
-      Writeln(tty,'Try again when there are fewer lusers on the system.');
-    }
-  Else;				/* la */
-#endif
-
   /* begin to play */
 
   First_Init();		/* #63 */
@@ -11213,50 +10220,15 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
-#if 0
-  If Name_check
-	Begin /* This is the game portion */
-	  LogIni;
-	  Cls;
-	  Not_Staffer = Not Staffy;
-	  If Rescan(R_file_name) Then /* #63 */
-	    If Restore_Game
-	      Reason = Saved_R
-	    Else
-	      Reason = Quit_R
-	  Else
-	    Reason = Died_R;
-	  If (Reason != Quit_R)
-	    {
-	      If (Reason == Died_R)
-		/* #71 these brackets are bogus */
-		}
-#endif
 	  First_Screen();	/* #63 */
 	  Reason = Play_The_Game(); /* #55 */
 	  clear();
-#if 0
-	  Logplayer(Files.Log^,Reason); /* #49,#55 */
-#endif
 	  if ((Player_Move != CHDEL && Switches.Tomb_swi &&
 	       Reason == Died_R))
 	    Bury_Player();	/* #66 */
 
 	  if ((! Saved) && Want_scores)
 	    Show_Scores(false);
-#if 0
-  Else
-    {
-	    DeInterrupts
-	      } /* This is the game portion */
-      Else
-	{
-	  Deinterrupts; /* #63 */
-	  Writeln(tty,'Your name is already in use.  Please choose another.');
-	}
-      Restty; /* #49 Put in right place */
-} /* begin to play */
-#endif
 
   refresh();
   echo();

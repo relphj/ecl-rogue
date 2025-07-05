@@ -1,0 +1,44 @@
+README,  5-Jul-25 10:07:42, Edit by relph
+
+
+------------------------------------------------
+Important facts you need to know about ECL Rogue
+------------------------------------------------
+
+Please see the file "LICENSE" for more information about the
+distribution and modification policy for ECL Rogue.
+
+Although we can think of many changes that could be made to this game,
+our goal is to leave the game as close as possible to how it was
+originally imagined in 1982.  (New features were to be part of a game
+called "Thief" which, alas, was never finished.)  However, we know
+there are still bugs in ECL Rogue (see the ECL Rogue User Manual for
+more information).  So if you fix bugs or make other changes to this
+game, please submit a pull request so that we can make your changes
+available to a wider audience.
+
+ECL Rogue is dedicated to the memory of Maurice Wuts.
+
+
+-----------------------------------
+Files included in this distribution
+-----------------------------------
+
+README			This file
+LICENSE			GNU GPLv2
+tops-20			The original TOPS-20 PASCAL source files
+unix			Linux C source files
+toy-arnold-1984.jpg	A screenshot from the original Rogue PC version
+
+
+------------------------
+Attributions and Credits
+------------------------
+
+ECL Rogue was developed at the University of Southern California by
+Gary Craig, Oscar Erickson, John Relph, and Jay Skeer (remember those
+names), in Summer, 1982.  Thanks also to to Maurice Wuts, Bob
+Schwartzkopf, and Mark Brown for their ideas and assistance.
+
+ECL Rogue was translated from the original Hedrick Pascal and Tops-20
+Macro source code to C for *nix by John Relph in March 2004.

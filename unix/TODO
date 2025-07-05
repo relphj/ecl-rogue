@@ -1,0 +1,13 @@
+Rogue TO DO LIST
+----------------
+
+Change fast mode so that 5 <Move> in fast mode means next move is slow
+
+Add cute Welcome screen
+
+Add cursed scroll of genocide (1/100 chance)?
+
+Add command line switches (rogue -xxx)
+
+Add SAVE_GAME
+Add RESTORE_GAME

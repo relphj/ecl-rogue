@@ -1,0 +1,72 @@
+README,  4-Jun-04 15:10:42, Edit by relph
+
+
+------------------------------------------------
+Important facts you need to know about ECL Rogue
+------------------------------------------------
+
+Please see the file "rogue.policy" for more information about the
+distribution and modification policy for ECL Rogue.
+
+Although we can think of many changes that could be made to this game,
+our goal is to leave the game as close as possible to how it was
+originally imagined in 1982.  (New features were to be part of a game
+called "Thief" which, alas, was never finished.)  However, we know
+there are still bugs in ECL Rogue (see the ECL Rogue User Manual for
+more information).  So if you fix bugs or make other changes to this
+game, please send your changes to bug-rogue@idiot-dog.com so that we
+can make your changes available to a wider audience.
+
+Please contact bug-rogue@idiot-dog.com for more information.
+
+ECL Rogue is dedicated to the memory of Maurice Wuts.
+
+
+-----------------------------------
+Files included in this distribution
+-----------------------------------
+
+README			This file
+rogue.policy		A copyleft of sorts
+Makefile		A very simple Makefile
+rogue.h			Definitions for data used in the source code
+rogue.c			The source code for the game
+rogue.html		ECL Rogue User Manual
+rogue.txt		A short list of Rogue hints (author unknown)
+
+
+----------------------
+Implementation Details
+----------------------
+
+ECL Rogue for UNIX differs from the original ECL Rogue for Tops-20 in
+a few minor ways, as follows:
+
+ * No site-specific initialization is performed.
+ * No site-wide list of top scores is maintained.
+ * There is no R-STAT command; use "rogue -s" to see the list of top
+   scoring games.
+ * Saving and restoring a game is not supported.
+
+
+------------------------
+Supported Configurations
+------------------------
+
+ECL Rogue is known to compile and run on Mac OS X (Panther), Red Hat
+Linux 7.3, FreeBSD 4.9, SGI IRIX 6.5.19.  It may also compile and run
+on other operating systems and versions.  Let us know if it works for
+you.  Use at your own risk.
+
+
+------------------------
+Attributions and Credits
+------------------------
+
+ECL Rogue was developed at the University of Southern California by
+Gary Craig, Oscar Erickson, John Relph, and Jay Skeer (remember those
+names), in Summer, 1982.  Thanks also to to Maurice Wuts, Bob
+Schwartzkopf, and Mark Brown for their ideas and assistance.
+
+ECL Rogue was translated from the original Hedrick Pascal and Tops-20
+Macro source code to C for *nix by John Relph in March 2004.

@@ -1,6 +1,5 @@
 /* rogue.c - ECL Rogue */
-/* rogue.c, 15-Sep-13 22:52:42, Edit by relph */
-/* <RELPH.ROGUE>ROGUE.PAS.2290,  9-Jan-88 12:51:02, Edit by RELPH */
+/* rogue.c, 28-Jun-26 10:46:00, Edit by relph */
 /* **************************************************************************
 
                               ECL ROGUE
@@ -301,6 +300,9 @@ sometime -- JMR
 15-Sep-13 22:52:21, Edit by relph
 #76  Fix display of version info
 
+2026-06-28T02:46:00Z, Edit by relph
+#77  Simplify object selector and other minor silliness
+
 ****************************************************************************/
 
 #include <curses.h>
@@ -328,9 +330,9 @@ sometime -- JMR
 #define Rogue_Version	4
 
 /* HEY!  CHANGE THESE THREE VERSION CONSTANTS FOR EVERY CHANGE!!! */
-#define Rogue_Update	76
-#define Rogue_Edit	2298
-#define Rogue_Date	"15 September 2013"
+#define Rogue_Update	77
+#define Rogue_Edit	2299
+#define Rogue_Date	"28 June 2026"
 
 /* --------------------------------------------------------- */
 /* static initializers */
@@ -424,7 +426,7 @@ Monsters Monster[Max_Monster] = {
 
   {
     /* m_fungi */
-    "violet fungi",		/* Long_Name */
+    "violet fungus",		/* #77 Long_Name */
     'F',			/* Name */
     6,				/* Hit_Dice */
     7,				/* Ac */
@@ -2647,15 +2649,15 @@ FILE *Config_Open(const char *fn, const char *mode) {
 
   if (logfp == NULL)
     logfp = stderr;
-  
+
   if (stat(confdir, &sbuf) == -1) {
     if (errno == ENOENT) {	/* does not exist */
       if (mkdir(confdir, 0700) != 0) {
-	fprintf(logfp, "%s: mkdir failed: %d\n", confdir, errno);	
+	fprintf(logfp, "%s: mkdir failed: %d\n", confdir, errno);
 	return NULL;
       }
     } else {
-      fprintf(logfp, "%s: stat failed: %d\n", confdir, errno);	
+      fprintf(logfp, "%s: stat failed: %d\n", confdir, errno);
       return NULL;
     }
   } else {			 /* success */
@@ -4859,7 +4861,7 @@ void Get_Treasure(int X, int Y) {
 } /* Get_Treasure */
 
 char Inventory(Obj_Ptr List, Obj_Class_Type Which,
-	       bool Ask_object) { /* #65 */
+	       unsigned int Options) { /* #77 */
 
   char Ch,Item,Low,High;
   Obj_Ptr Worker;
@@ -4885,27 +4887,27 @@ char Inventory(Obj_Ptr List, Obj_Class_Type Which,
 	  Low = Item;
 	if (Item > High)
 	  High = Item;
-/*		S := Spaces;
-		Strwrite(Fp,S); */
-	Echo_Init();
-	sprintf(F/*p*/, "%c) ", Item);
-	Write_obj_name(F/*p*/, Worker, Not_Another);
-	if (Worker == Player.Cur_Wep)
-	  strcat(F/*p*/, " (in hand)");
-	else if (Worker == Player.Cur_Arm)
-	  strcat(F/*p*/, " (being worn)");
-	else if (Worker == Player.Cur_Ring[Left_H])
-	  strcat(F/*p*/, " (on left hand)");
-	else if (Worker == Player.Cur_Ring[Right_H])
-	  strcat(F/*p*/, " (on right hand)");
-	Scr_Text(Line, Echo_Str);
-	if (Switches.Slow_swi) {
-	  if (Have_One)
-	    More = Wait_For_Space(false);
-	  if (More)
-	    Redisplay();
-	} else
+	if ((Options & No_display_object) == 0) {
+	  Echo_Init();
+	  sprintf(F/*p*/, "%c) ", Item);
+	  Write_obj_name(F/*p*/, Worker, Not_Another);
+	  if (Worker == Player.Cur_Wep)
+	    strcat(F/*p*/, " (in hand)");
+	  else if (Worker == Player.Cur_Arm)
+	    strcat(F/*p*/, " (being worn)");
+	  else if (Worker == Player.Cur_Ring[Left_H])
+	    strcat(F/*p*/, " (on left hand)");
+	  else if (Worker == Player.Cur_Ring[Right_H])
+	    strcat(F/*p*/, " (on right hand)");
+	  Scr_Text(Line, Echo_Str);
+	  if (Switches.Slow_swi) {
+	    if (Have_One)
+	      More = Wait_For_Space(false);
+	    if (More)
+	      Redisplay();
+	  } else
 	    Line++;
+	}
 	Have_One = true;
       }
       Worker = Worker->Next;
@@ -4913,11 +4915,33 @@ char Inventory(Obj_Ptr List, Obj_Class_Type Which,
     }
   }
   if (! Have_One) {
-    Echo("Nothing appropriate");
+    Empty_Echo = true;
+    Echo_Init();
+
+    strcat(F, "You do not have a");
+    switch (Which) {
+    case Amulet_T: strcat(F, "n amulet"); break;
+    case Food_T: strcat(F, "ny food"); break;
+    case Ring_T: strcat(F, " ring"); break;
+    case Wand_T: strcat(F, " wand"); break;
+    case Scroll_T: strcat(F, " scroll"); break;
+    case Potion_T: strcat(F, " potion"); break;
+    case Armor_T: strcat(F, "ny armor"); break;
+    case Weapon_T: strcat(F, " weapon"); break;
+    case Gold_T: strcat(F, "ny gold"); break;
+    case All_T:  strcpy(F, "Your pack is empty"); break;
+    default: strcpy(F, "Inventory: unknown object type");
+    }
+    if ((Which != All_T) && !Switches.Terse_swi)
+      strcat(F, " in your pack");
+    Echo(Echo_Str);
+
     return(CHESC);
+  } else if ((Options & Ask_object) == 0) { /* #77 */
+    return('!');
   } else {
     if (More) {
-      if (Ask_object) {
+      if ((Options & Ask_object) != 0) { /* #77 */
 	Scr_Text(Line, "--Type the letter of your choice or <Space>--");
 	Redisplay();
 	move(Line, 46);
@@ -4950,9 +4974,14 @@ Obj_Ptr Take_from_pack(char *Ch, Obj_Ptr *List,
 
   Obj_Ptr Worker,Parent,Removed_obj;
   char Count;
+  char Have_One;		/* #77 */
 
-  if (*Ch == '*' || *Ch == '?')	/* #54 */
-    *Ch = Inventory(*List, Which, true); /* #65 Begin edit */
+  Have_One = Inventory(*List, Which, No_display_object);
+  if (Have_One != '!')
+    return(NULL);		/* #77 End edit */
+
+  if (*Ch == '*' || *Ch == '?' || *Ch == ' ') /* #77, #54 */
+    *Ch = Inventory(*List, Which, Ask_object); /* #65 Begin edit */
   if (*Ch == CHESC)
     return(NULL);
   else if (*Ch == '*')
@@ -5201,6 +5230,11 @@ Obj_Ptr Choose_Item(Action_Type Typ, Obj_Class_Type O_Typ,
   bool More;
   char Ch;
   Obj_Ptr This_one;
+  char Have_One;		/* #77 */
+
+  Have_One = Inventory(Player.Obj_List, O_Typ, No_display_object);
+  if (Have_One != '!')
+    return(NULL);		/* #77 End edit */
 
   This_one = NULL;
   More = true;
@@ -5343,9 +5377,10 @@ void Enchant_Armor() {
 
   if (Player.Cur_Arm) {
     Echo_Init();
-    if (!Switches.Terse_swi)	/* #54 */
-      strcat(F, "As the scroll vanishes, ");
-    strcat(F, "your ");
+    if (Switches.Terse_swi)	/* #54 */
+      strcat(F, "Your ");
+    else
+      strcat(F, "As the scroll vanishes, your");
     strcat(F, Armor[Player.Cur_Arm->Index].Name); /* #71 no length */
     strcat(F, " glows blue");
     Echo_Str[0] = toupper(Echo_Str[0]);
@@ -5362,9 +5397,10 @@ void Enchant_Weapon() {
 
   if (Player.Cur_Wep) {
     Echo_Init();
-    if (!Switches.Terse_swi)
-      strcat(F, "As the scroll vanishes, ");
-    strcat(F, "your ");
+    if (Switches.Terse_swi)
+      strcat(F, "Your ");
+    else
+      strcat(F, "As the scroll vanishes, your");
     strcat(F, Weapon[Player.Cur_Wep->Index].Name); /* #71 no length */
     strcat(F, " twists in your hand");
     Echo_Str[0] = toupper(Echo_Str[0]);
@@ -5517,14 +5553,13 @@ void Genocide_Message(int dead, int Idx) {
       else if (Idx == m_larva)
 	strcat(It, "larvae");
       else if (Idx == m_kill)
-	strcat(It, "killmouli");
+	strcat(It, "killmoulis"); /* #77 */
       else if (Idx == m_homon)
 	strcat(It, "homonculi");
       else if (Idx == m_almiraj)
 	strcat(It, "al-mi\'raji");
-      else if (Idx == m_fungi ||
-	       Idx == m_vodyanoi)
-	strcat(It, Monster[Idx].Long_Name);
+      else if (Idx == m_fungi)
+	strcat(It, "violet fungi"); /* #77 */
       else {
 	strcat(It, Monster[Idx].Long_Name);
 	strcat(It, "s");
@@ -6093,7 +6128,7 @@ bool Wield_weapon() {
   return false;
 }
 
-void Move_monsters(Mon_Ptr M); 	/* Forward */
+void Move_monsters(Mon_Ptr M);	/* Forward */
 
 bool Wear_armor() {
   Obj_Ptr This_one;
@@ -6595,7 +6630,7 @@ void Confusion() {
 }
 
 void Confuse_monster() {
-  if (Player.Blind_count) 	/* #71 */
+  if (Player.Blind_count)	  /* #71 */
     Random_Potion(p_confuse_mon); /* #71 */
   else
     Echo("Your hands glow red for a moment, then the color fades");
@@ -6668,7 +6703,7 @@ bool Quaff_potion() {
   case p_ex_healing:  Extra_Healing(); break;
   case p_invis:       See_invisible(); break;
   case p_haste:	      Haste_self(); break;
-  case p_slow:        Slow_self(); break;
+  case p_slow:	      Slow_self(); break;
   case p_blind:       Blindness(); break;
   case p_confuse:     Confusion(); break;
   case p_confuse_mon: Confuse_monster(); break;
@@ -7672,7 +7707,7 @@ int Polymorph(Mon_Ptr *NewMon) {
 	   I == m_nymph ||
 	   I == m_gith ||
 	   I == m_lep ||
-	   I == oldIndex || 	/* #71 */
+	   I == oldIndex ||	/* #71 */
 	   Monster[I].Min_Level == INT_MAX);
   M->HP = (M->HP * Monster[I].Hit_Dice) / Monster[oldIndex].Hit_Dice;
   M->Index = I;
@@ -9134,6 +9169,11 @@ bool Save_vs_poison(int Adj) {
  * Monster movement routines: were internal to Move_monsters() *
  ***************************************************************/
 
+void Wings_Of_Desire() {
+  if (! Switches.Terse_swi)
+    Echo("And, thus, have lost all desire to find the Amulet of Yendor");
+}
+
 void Giant_Ant_Special() {
   if (! Save_vs_poison(0)) {
     if (Player.DX <= 1) {
@@ -9169,8 +9209,7 @@ void Wraith_Special() {
       if (! (Switches.Terse_swi || Player.Blind_count))
 	Echo("You feel the wraith drain the last of your body\'s warmth away");
       Echo("You have become a wraith");
-      if (! Switches.Terse_swi)
-	Echo("And, thus, have lost all desire to find the Amulet of Yendor");
+      Wings_Of_Desire();
     } else {
       if (! (Switches.Terse_swi || Player.Blind_count))
 	Echo("As the wraith touches you, you feel your body grow cold");
@@ -9192,8 +9231,7 @@ void Vampire_Special() {
       if (! (Switches.Terse_swi || Player.Blind_count))
 	Echo("You scream in anguish as the vampire drains your remaining energy");
       Echo("You have become a vampire");
-      if (! Switches.Terse_swi)
-	Echo("And, thus, have lost all desire to find the Amulet of Yendor");
+      Wings_Of_Desire();
     } else {
       if (Player.Blind_count)
 	Echo("You feel fangs sink into your shoulder");
@@ -9230,8 +9268,7 @@ void Intellect_Devourer_Special() {
       if (! (Switches.Terse_swi || Player.Blind_count))
 	Echo("The intellect devourer has ego-whipped your mind into froth!");
       Echo("You become a raving idiot!");
-      if (! Switches.Terse_swi)
-	Echo("And, thus, have lost all desire to find the Amulet of Yendor");
+      Wings_Of_Desire();
     }
   }
 } /* Intellect_Devourer_Special */
@@ -9314,7 +9351,7 @@ void Nymph_special(Mon_Ptr *M) { /* #70 */
 void Purple_worm_special(Mon_Ptr M) { /* Man, is this mean! */
   if (! Save_vs_poison(0)) {
     if (Switches.Terse_swi || Player.Blind_count)
-      Echo("It swallows you...Gulp!");
+      Echo("It swallows you... Gulp!");
     else
       Echo("Everything goes dark as the purple worm swallows you whole");
     Player.Eaten_count = 6;	/* six turns til death */
@@ -9520,7 +9557,7 @@ void Hurt_Player(Mon_Ptr *M) {	/* #71 */
   }
   /* Handle special attacks */
 
-  if (Player.HP > 0) 		/* don''t do specials if he is dead */
+  if (Player.HP > 0)		/* don''t do specials if he is dead */
     if ((Monster[(*M)->Index].Special == 2) ||
 	((Monster[(*M)->Index].Special == 3) && (T > 0)))
       switch ((*M)->Index) {	/* Monster gets his special */
@@ -9543,7 +9580,7 @@ void Hurt_Player(Mon_Ptr *M) {	/* #71 */
       case m_revenant: Revenant_Special();		break;
       case m_sand    : Sandman_Special(M);		break;
       case m_umpleby : Umpleby_Special();		break;
-      default        : ;
+      default	     : ;
       }
 } /* Hurt_Player */
 
@@ -10138,8 +10175,7 @@ Q_Reason Play_The_Game() {	/* #55 */
 	  Echo("The purple worm has digested you");
 	else
 	  Echo("You are digested");
-	if (! Switches.Terse_swi)
-	  Echo("And, thus, you have lost all desire to find the Amulet of Yendor");
+	Wings_Of_Desire();
       } else
 	Change_stats |= S_Bottom;
     }
@@ -10175,7 +10211,6 @@ Q_Reason Play_The_Game() {	/* #55 */
 } /* Play_The_Game */
 
 void First_Screen() {	/* #57 changed a lot */
-
 
   Empty_Echo = true;
   Echo_Init();

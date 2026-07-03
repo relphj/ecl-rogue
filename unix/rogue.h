@@ -533,4 +533,7 @@ Switch_record Switches = {
 
 #define BKSP { getyx(stdscr, iy, ix); if (ix > 0) move(iy, --ix); }
 
+#define Ask_object		(1 << 0) /* #77 */
+#define No_display_object	(1 << 1)
+
 #endif

@@ -25,10 +25,12 @@ Files included in this distribution
 -----------------------------------
 
 README			This file
-LICENSE			GNU GPLv2
+LICENSE			GNU GPLv3 2007
+BUGS			A list of known bugs or misfeatures
+TODO			A list of possible enhancements
 tops-20			The original TOPS-20 PASCAL source files
 unix			Linux C source files
-toy-arnold-1984.jpg	A screenshot from the original Rogue PC version
+docs			Documentation and other artifacts
 
 
 ------------------------

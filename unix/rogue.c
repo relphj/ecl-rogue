@@ -1,5 +1,5 @@
 /* rogue.c - ECL Rogue */
-/* rogue.c, 28-Jun-26 10:46:00, Edit by relph */
+/* rogue.c, 12-Jul-26 18:31:45, Edit by relph */
 /* **************************************************************************
 
                               ECL ROGUE
@@ -303,6 +303,9 @@ sometime -- JMR
 2026-06-28T02:46:00Z, Edit by relph
 #77  Simplify object selector and other minor silliness
 
+2026-07-12T18:31:45, Edit by relph
+#78  Fix a bug in enchant *. Update version info.
+
 ****************************************************************************/
 
 #include <curses.h>
@@ -330,9 +333,9 @@ sometime -- JMR
 #define Rogue_Version	4
 
 /* HEY!  CHANGE THESE THREE VERSION CONSTANTS FOR EVERY CHANGE!!! */
-#define Rogue_Update	77
-#define Rogue_Edit	2299
-#define Rogue_Date	"28 June 2026"
+#define Rogue_Update	78
+#define Rogue_Edit	2300
+#define Rogue_Date	"12 July 2026"
 
 /* --------------------------------------------------------- */
 /* static initializers */
@@ -5380,7 +5383,7 @@ void Enchant_Armor() {
     if (Switches.Terse_swi)	/* #54 */
       strcat(F, "Your ");
     else
-      strcat(F, "As the scroll vanishes, your");
+      strcat(F, "As the scroll vanishes, your ");
     strcat(F, Armor[Player.Cur_Arm->Index].Name); /* #71 no length */
     strcat(F, " glows blue");
     Echo_Str[0] = toupper(Echo_Str[0]);
@@ -5400,7 +5403,7 @@ void Enchant_Weapon() {
     if (Switches.Terse_swi)
       strcat(F, "Your ");
     else
-      strcat(F, "As the scroll vanishes, your");
+      strcat(F, "As the scroll vanishes, your ");
     strcat(F, Weapon[Player.Cur_Wep->Index].Name); /* #71 no length */
     strcat(F, " twists in your hand");
     Echo_Str[0] = toupper(Echo_Str[0]);
@@ -8537,7 +8540,7 @@ bool Stop(bool Foo) {
 
 void Type_version() {
   Long_string vers;
-  sprintf(vers, "This is ECL Rogue (for Linux), version %d.%d(%d)",
+  sprintf(vers, "This is ECL Rogue (for *nix), version %d.%d(%d)",
 	  Rogue_Version, Rogue_Update, Rogue_Edit);
   AddText(vers);
 }
@@ -8554,7 +8557,7 @@ void Version_Text() {
   TextLine++;
   AddText("   Written by:  Gary Craig, Oscar Erickson, John Relph, and Jay Skeer");
   AddText("           at:  USC-ECL May-December, 1982");
-  AddText("     Modified:  Quite a bit.");
+  AddText("     Modified:  Converted to C for *nix by John Relph, March 2004");
   TextLine++;
 } /* Version_Text */
 
@@ -9490,7 +9493,7 @@ void Hurt_Player(Mon_Ptr *M) {	/* #71 */
     Adj -= 1;			/* Was 2 */
   if ((*M)->Index == m_gith)	/* Githyanki''s silver sword */
     Adj += 3;
-  else if ((*M)->Index == m_death)	/* Death Knight two-handed sword? */
+  else if ((*M)->Index == m_death) /* Death Knight two-handed sword? */
     Adj += 4;
 
   Blind = false;		/* #73 can't see invisible? */

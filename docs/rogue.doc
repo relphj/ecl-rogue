@@ -16,7 +16,7 @@
 This  manual  describes  ECL  ROGUE  version  4, developed at the University of
 Southern California by Gary Craig, Oscar Erickson, John Relph,  and  Jay  Skeer
 (remember  those  names),  in  Summer,  1982.   This manual was last updated in
-November, 1987.
+July, 2026.
 
 What follows is the (somewhat edited) text of the original Rogue  User  Manual,
 to  whose  authors  I am deeply grateful.  The text has been altered to reflect
@@ -512,15 +512,15 @@ the surface.
                                      BUGS
 
 The number of misfeatures, or outright bugs, in Rogue is  still  rather  large.
-The authors would appreciate a mailed report of all bugs encountered.  Messages
-should be sent to BUG-ROGUE@ECLC.USC.EDU.  Please note  that  many  things  you
-might  think  to  be  bugs  are  really features.  Of course, something like an
-illegal instruction interrupt or illegal  memory  reads/writes  are  definitely
-bugs, as are infinite loops.  The program also produces its own error messages;
-these are also legitimate bugs.  The text of any of these messages, along  with
-the  value  of the PC (if given) and the last command typed, should be included
-in the bug report.  Messages such as `Rogue blew up' don't help.   All  reports
-will be dealt with swiftly.
+The authors would appreciate a report  of any bug encountered. Please create an
+issue  at  https://github.com/relphj/ecl-rogue/issues.  Please note  that  many
+things you  might think to  be bugs are  really features. Of  course, something
+like  an  illegal instruction  interrupt  or  illegal memory  reads/writes  are
+definitely bugs, as are infinite loops. The program also produces its own error
+messages; these  are also legitimate bugs.  The text of any  of these messages,
+along with the value of the PC (if given) and the last command typed, should be
+included in the  bug report. Messages such  as `Rogue blew up'  don't help. All
+reports will be dealt with swiftly.
 
 Now  it  is  time  for  the  local  Rogue  authors (Rogue Lords?) to make their
 acknowledgements.  Thanks are due to Maurice Wuts, Bob Schwartzkopf,  and  Mark

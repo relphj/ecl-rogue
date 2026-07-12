@@ -526,8 +526,8 @@ Amulet.  Only then may you find your way to the surface.
 @center(BUGS)
 
 The number of misfeatures, or outright bugs, in Rogue is still rather
-large.  The authors would appreciate a mailed report of all bugs
-encountered.  Messages should be sent to BUG-ROGUE@@ECLC@.USC@.EDU.  Please
+large.  The authors would appreciate a report of any bug encountered.
+Please create an issue at https://github.com/relphj/ecl-rogue/issues. Please
 note that many things you might think to be bugs are really features.
 Of course, something like an illegal instruction interrupt or illegal
 memory reads/@|writes are definitely bugs, as are infinite loops.  The

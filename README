@@ -33,6 +33,30 @@ unix			Linux C source files
 docs			Documentation and other artifacts
 
 
+----------------------
+Implementation Details
+----------------------
+
+ECL Rogue for *nix differs from the original ECL Rogue for TOPS-20 in
+a few minor ways, as follows:
+
+ * No site-specific initialization is performed.
+ * No site-wide list of top scores is maintained.
+ * There is no R-STAT command; use "rogue -s" to see the list of top
+   scoring games.
+ * Saving and restoring a game is not supported.
+
+
+------------------------
+Supported Configurations
+------------------------
+
+ECL Rogue is known to compile and run on Mac OS X (Panther), Red Hat
+Linux 7.3, FreeBSD 4.9, SGI IRIX 6.5.19, and Ubuntu 24.04.4 LTS.  It
+may also compile and run on other operating systems and versions.  Let
+us know if it works for you. Use at your own risk.
+
+
 ------------------------
 Attributions and Credits
 ------------------------
@@ -42,5 +66,5 @@ Gary Craig, Oscar Erickson, John Relph, and Jay Skeer (remember those
 names), in Summer, 1982.  Thanks also to to Maurice Wuts, Bob
 Schwartzkopf, and Mark Brown for their ideas and assistance.
 
-ECL Rogue was translated from the original Hedrick Pascal and Tops-20
+ECL Rogue was translated from the original Hedrick Pascal and TOPS-20
 Macro source code to C for *nix by John Relph in March 2004.

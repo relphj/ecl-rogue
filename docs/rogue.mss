@@ -501,7 +501,7 @@ with your score, character name, date, and disposition of the game.
 Note that the neither the main score list nor the personal score list
 are updated when the game is quit using the ^C command.
 
-@center(ACKNOWLEDGEMENTS)
+@center(ACKNOWLEDGMENTS)
 
 Rogue was originally conceived of by Glenn Wichman and Michael Toy.
 Ken Arnold and Michael Toy then smoothed out the user interface, and
@@ -526,19 +526,20 @@ Amulet.  Only then may you find your way to the surface.
 @center(BUGS)
 
 The number of misfeatures, or outright bugs, in Rogue is still rather
-large.  The authors would appreciate a report of any bug encountered.
-Please create an issue at https://github.com/relphj/ecl-rogue/issues. Please
-note that many things you might think to be bugs are really features.
-Of course, something like an illegal instruction interrupt or illegal
-memory reads/@|writes are definitely bugs, as are infinite loops.  The
-program also produces its own error messages; these are also
-legitimate bugs.  The text of any of these messages, along with the
-value of the PC (if given) and the last command typed, should be
-included in the bug report.  Messages such as `Rogue blew up' don't
-help.  All reports will be dealt with swiftly.
+large. The authors would appreciate a report of any bug encountered.
+Please create an issue at https://github.com/relphj/ecl-rogue/issues.
+Please note that many things you might think to be bugs are really
+features. Of course, something like an illegal instruction interrupt
+or illegal memory reads/@|writes are definitely bugs, as are infinite
+loops. The program also produces its own error messages; these are
+also legitimate bugs. The text of any of these messages and the last
+command typed should be included in the bug report. Additionally,
+Rogue creates a file called `.rogue.log' in your connected directory;
+please include the text of that file in the bug report. Messages such
+as `Rogue blew up' don't help. All reports will be dealt with swiftly.
 
 Now it is time for the local Rogue authors (Rogue Lords?) to make
-their acknowledgements.  Thanks are due to Maurice Wuts, Bob
+their acknowledgments.  Thanks are due to Maurice Wuts, Bob
 Schwartzkopf, and Mark Brown for their ideas and assistance, and of
 course to all the above mentioned people without whom the game
 undoubtedly wouldn't exist.

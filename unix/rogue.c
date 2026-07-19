@@ -5581,15 +5581,15 @@ void Genocide_Message(int dead, int Idx) {
   case 4:
     sprintf(F, "%s %s dead...", It, Is); break;
   case 5:
-    sprintf(F,"%s disappear%s into the ether...", It, Ess); break;
+    sprintf(F, "%s disappear%s into the ether...", It, Ess); break;
   case 6:
-    sprintf(F,"%s disappear%s with a quiet pop...", It, Ess); break;
+    sprintf(F, "%s disappear%s with a quiet pop...", It, Ess); break;
   case 7:
-    sprintf(F,"%s fade%s away into nothingness...", It, Ess); break;
+    sprintf(F, "%s fade%s away into nothingness...", It, Ess); break;
   case 8:
-    sprintf(F,"with a sigh %s turn%s and shuffle%s away...", It, Ess, Ess); break;
+    sprintf(F, "with a sigh %s turn%s and shuffle%s away...", It, Ess, Ess); break;
   case 9:
-    sprintf(F,"%s fall%s to the floor, lifeless...", It, Ess); break;
+    sprintf(F, "%s fall%s to the floor, lifeless...", It, Ess); break;
   }
   Echo_Str[0] = toupper(Echo_Str[0]);
   Echo(Echo_Str);
@@ -8059,6 +8059,7 @@ void M_Ouch_MSG(char *F, Mon_Ptr M, int T, Obj_Ptr Weap) {
   int New_Hp, Ratio, M_Half,M_Qtr, M_Max;
   bool Thrown;
   bool Blind = false;		/* #73 */
+  int die;
 
   if (Player.Blind_count != 0)		/* #73 can't see invisible? */
     Blind = true;
@@ -8099,14 +8100,21 @@ void M_Ouch_MSG(char *F, Mon_Ptr M, int T, Obj_Ptr Weap) {
       case 13:
       case 14: strcat(F, "It croaks!!"); break;
       }
-    }
-    else
-      switch (Die(18)) {	/* #54 */
+    } else {
+      /* #79 is this monster incorporeal or fungus? */
+      if (M->Index == m_fungi || M->Index == m_wraith) {
+	die = 13;		/* no splat squish or gore */
+      } else {
+	die = 18;
+      }
+
+      switch (Die(die)) {	/* #79 */
+	/* #79 generic death messages */
       case 1: sprintf(F, "You have vanquished %s!!", It); break;
       case 2: sprintf(F, "%s has gone to meet its maker!!", It); break;
       case 3: sprintf(F, "%s will draw breath no more!!", It); break;
       case 4: sprintf(F, "You deal %s a death blow!!", It); break;
-      case 5: sprintf(F, "You splatter %s!!!", It); break;
+      case 5: sprintf(F, "%s curses you and expires!", It); break;
       case 6: sprintf(F, "%s screams in agony and is no more!!", It); break;
       case 7: sprintf(F, "You have killed %s!!", It); break;
       case 8: sprintf(F, "Okay, you killed %s.  Wow.", It); break;
@@ -8121,12 +8129,14 @@ void M_Ouch_MSG(char *F, Mon_Ptr M, int T, Obj_Ptr Weap) {
       case 11: sprintf(F, "%s is launched into eternity...", It); break;
       case 12: sprintf(F, "%s cashes in its chips!", It); break;
       case 13: sprintf(F, "You have slain %s!!", It); break;
+	/* #79 corpsy death messages */
       case 14: sprintf(F, "%s collapses in a pool of its own gore!", It); break;
       case 15: sprintf(F, "And you thought %s smelled bad on the outside!!", It); break;
-      case 16: sprintf(F,"%s curses you and expires!", It); break;
+      case 16: sprintf(F, "You splatter %s!!!", It); break;
       case 17: sprintf(F, "Splat!  Now you smell as bad as %s did!", It); break;
       case 18: sprintf(F, "%s disappears in a cloud of greasy black smoke!!", It); break;
       }
+    }
     /* It dies */
   } else { /* You hurt it */
     if (Player.Blind_count)
